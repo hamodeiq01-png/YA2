@@ -53,7 +53,7 @@ function requireStudent(req, res, next) {
 // --- AUTHENTICATION APIS ---
 
 // Register Teacher
-app.post('/api/auth/register-teacher', (req, res) => {
+app.post('/api/auth/register-teacher', async (req, res) => {
   const { fullName, username, password } = req.body;
   
   if (!fullName || !username || !password) {
@@ -61,7 +61,7 @@ app.post('/api/auth/register-teacher', (req, res) => {
   }
 
   try {
-    const user = db.createUser(fullName, username, password, 'teacher');
+    const user = await db.createUser(fullName, username, password, 'teacher');
     res.status(201).json({ message: 'تم تسجيل المعلم بنجاح', user });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -69,30 +69,34 @@ app.post('/api/auth/register-teacher', (req, res) => {
 });
 
 // Login (Both Teacher and Student)
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
     return res.status(400).json({ error: 'اسم المستخدم وكلمة المرور مطلوبة' });
   }
 
-  const user = db.authenticateUser(username, password);
-  if (!user) {
-    return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+  try {
+    const user = await db.authenticateUser(username, password);
+    if (!user) {
+      return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
+    }
+
+    // Create JWT Token
+    const token = jwt.sign(
+      { id: user.id, username: user.username, role: user.role, fullName: user.fullName },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    res.json({
+      message: 'تم تسجيل الدخول بنجاح',
+      token,
+      user
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ أثناء تسجيل الدخول' });
   }
-
-  // Create JWT Token
-  const token = jwt.sign(
-    { id: user.id, username: user.username, role: user.role, fullName: user.fullName },
-    JWT_SECRET,
-    { expiresIn: '30d' }
-  );
-
-  res.json({
-    message: 'تم تسجيل الدخول بنجاح',
-    token,
-    user
-  });
 });
 
 // Get Current User (Me)
@@ -103,13 +107,17 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 // --- TEACHER APIS ---
 
 // Get Students of Teacher
-app.get('/api/teacher/students', authenticateToken, requireTeacher, (req, res) => {
-  const students = db.getStudentsForTeacher(req.user.id);
-  res.json({ students });
+app.get('/api/teacher/students', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const students = await db.getStudentsForTeacher(req.user.id);
+    res.json({ students });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ أثناء جلب الطلاب' });
+  }
 });
 
 // Create Student Account by Teacher
-app.post('/api/teacher/students', authenticateToken, requireTeacher, (req, res) => {
+app.post('/api/teacher/students', authenticateToken, requireTeacher, async (req, res) => {
   const { fullName, username, password } = req.body;
 
   if (!fullName || !username || !password) {
@@ -117,7 +125,7 @@ app.post('/api/teacher/students', authenticateToken, requireTeacher, (req, res) 
   }
 
   try {
-    const student = db.createUser(fullName, username, password, 'student', req.user.id);
+    const student = await db.createUser(fullName, username, password, 'student', req.user.id);
     res.status(201).json({ message: 'تم إنشاء حساب الطالب بنجاح', student });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -125,7 +133,7 @@ app.post('/api/teacher/students', authenticateToken, requireTeacher, (req, res) 
 });
 
 // Create Daily Reading Assignment
-app.post('/api/teacher/assignments', authenticateToken, requireTeacher, (req, res) => {
+app.post('/api/teacher/assignments', authenticateToken, requireTeacher, async (req, res) => {
   const { bookName, startPage, endPage, targetDate } = req.body;
 
   if (!bookName || !startPage || !endPage || !targetDate) {
@@ -133,7 +141,7 @@ app.post('/api/teacher/assignments', authenticateToken, requireTeacher, (req, re
   }
 
   try {
-    const assignment = db.createAssignment(req.user.id, bookName, startPage, endPage, targetDate);
+    const assignment = await db.createAssignment(req.user.id, bookName, startPage, endPage, targetDate);
     res.status(201).json({ message: 'تمت إضافة الورد اليومي بنجاح', assignment });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -141,60 +149,76 @@ app.post('/api/teacher/assignments', authenticateToken, requireTeacher, (req, re
 });
 
 // Get Assignments Created by Teacher
-app.get('/api/teacher/assignments', authenticateToken, requireTeacher, (req, res) => {
-  const assignments = db.getAssignmentsForTeacher(req.user.id);
-  res.json({ assignments });
+app.get('/api/teacher/assignments', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const assignments = await db.getAssignmentsForTeacher(req.user.id);
+    res.json({ assignments });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ أثناء جلب التكليفات' });
+  }
 });
 
 // Get Student Submissions (dashboard data)
-app.get('/api/teacher/submissions', authenticateToken, requireTeacher, (req, res) => {
-  const submissions = db.getSubmissionsForTeacherDashboard(req.user.id);
-  res.json({ submissions });
+app.get('/api/teacher/submissions', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const submissions = await db.getSubmissionsForTeacherDashboard(req.user.id);
+    res.json({ submissions });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ أثناء جلب التسليمات' });
+  }
 });
 
 // --- STUDENT APIS ---
 
 // Get Today's Assignment for Student
-app.get('/api/student/assignment/today', authenticateToken, requireStudent, (req, res) => {
-  const assignment = db.getAssignmentForStudentToday(req.user.id);
-  
-  if (!assignment) {
-    return res.json({ assignment: null, submission: null });
+app.get('/api/student/assignment/today', authenticateToken, requireStudent, async (req, res) => {
+  try {
+    const assignment = await db.getAssignmentForStudentToday(req.user.id);
+    
+    if (!assignment) {
+      return res.json({ assignment: null, submission: null });
+    }
+
+    // Check if student already submitted progress for today's assignment
+    const submissions = await db.getSubmissionsForStudent(req.user.id);
+    const todaySubmission = submissions.find(s => s.assignmentId === assignment.id) || null;
+
+    res.json({ assignment, submission: todaySubmission });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ أثناء جلب ورد اليوم' });
   }
-
-  // Check if student already submitted progress for today's assignment
-  const submissions = db.getSubmissionsForStudent(req.user.id);
-  const todaySubmission = submissions.find(s => s.assignmentId === assignment.id) || null;
-
-  res.json({ assignment, submission: todaySubmission });
 });
 
 // Get Student Assignments History
-app.get('/api/student/assignments/history', authenticateToken, requireStudent, (req, res) => {
-  const assignments = db.getAssignmentsHistoryForStudent(req.user.id);
-  const submissions = db.getSubmissionsForStudent(req.user.id);
+app.get('/api/student/assignments/history', authenticateToken, requireStudent, async (req, res) => {
+  try {
+    const assignments = await db.getAssignmentsHistoryForStudent(req.user.id);
+    const submissions = await db.getSubmissionsForStudent(req.user.id);
 
-  // Map assignments with their submission status
-  const history = assignments.map(a => {
-    const sub = submissions.find(s => s.assignmentId === a.id);
-    return {
-      id: a.id,
-      bookName: a.bookName,
-      startPage: a.startPage,
-      endPage: a.endPage,
-      targetDate: a.targetDate,
-      isCompleted: sub ? sub.isCompleted : false,
-      questions: sub ? sub.questions : '',
-      freeSpace: sub ? sub.freeSpace : '',
-      submittedAt: sub ? sub.submittedAt : null
-    };
-  });
+    // Map assignments with their submission status
+    const history = assignments.map(a => {
+      const sub = submissions.find(s => s.assignmentId === a.id);
+      return {
+        id: a.id,
+        bookName: a.bookName,
+        startPage: a.startPage,
+        endPage: a.endPage,
+        targetDate: a.targetDate,
+        isCompleted: sub ? sub.isCompleted : false,
+        questions: sub ? sub.questions : '',
+        freeSpace: sub ? sub.freeSpace : '',
+        submittedAt: sub ? sub.submittedAt : null
+      };
+    });
 
-  res.json({ history });
+    res.json({ history });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ أثناء جلب أرشيف الأوراد' });
+  }
 });
 
 // Submit Reading Progress
-app.post('/api/student/submit', authenticateToken, requireStudent, (req, res) => {
+app.post('/api/student/submit', authenticateToken, requireStudent, async (req, res) => {
   const { assignmentId, isCompleted, questions, freeSpace } = req.body;
 
   if (!assignmentId) {
@@ -202,7 +226,7 @@ app.post('/api/student/submit', authenticateToken, requireStudent, (req, res) =>
   }
 
   try {
-    const submission = db.submitProgress(req.user.id, assignmentId, isCompleted, questions, freeSpace);
+    const submission = await db.submitProgress(req.user.id, assignmentId, isCompleted, questions, freeSpace);
     res.json({ message: 'تم إرسال إنجازك بنجاح. بارك الله في همتك!', submission });
   } catch (error) {
     res.status(400).json({ error: error.message });
