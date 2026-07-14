@@ -1,40 +1,51 @@
-global.WebSocket = require('ws');
-const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-// Load config from environment variables (for Vercel) or fallback to config.json (for local development)
-let supabaseUrl = process.env.SUPABASE_URL;
-let supabaseKey = process.env.SUPABASE_KEY;
+const DB_PATH = path.join(__dirname, 'db.json');
 
-if (!supabaseUrl || !supabaseKey) {
-  try {
-    const configPath = path.join(__dirname, 'config.json');
-    if (fs.existsSync(configPath)) {
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      supabaseUrl = supabaseUrl || config.SUPABASE_URL;
-      supabaseKey = supabaseKey || config.SUPABASE_KEY;
-    }
-  } catch (e) {
-    console.error('Failed to load config.json and env variables are missing', e);
+// Initialize database file if it doesn't exist
+function initDb() {
+  if (!fs.existsSync(DB_PATH)) {
+    const initialData = {
+      users: [],
+      assignments: [],
+      submissions: []
+    };
+    fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2), 'utf8');
   }
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+// Helper to read database
+function readDb() {
+  initDb();
+  try {
+    const data = fs.readFileSync(DB_PATH, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error reading database file:', error);
+    return { users: [], assignments: [], submissions: [] };
+  }
+}
+
+// Helper to write database
+function writeDb(data) {
+  try {
+    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (error) {
+    console.error('Error writing to database file:', error);
+    return false;
+  }
+}
 
 // --- USER OPERATIONS ---
 
-async function createUser(fullName, username, password, role, teacherId = null) {
+function createUser(fullName, username, password, role, teacherId = null) {
+  const db = readDb();
+  
   // Check if username already exists
-  const { data: existingUser, error: checkError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('username', username.toLowerCase())
-    .maybeSingle();
-
-  if (checkError) throw new Error(checkError.message);
-  if (existingUser) {
+  if (db.users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
     throw new Error('اسم المستخدم موجود بالفعل');
   }
 
@@ -43,284 +54,154 @@ async function createUser(fullName, username, password, role, teacherId = null) 
 
   const newUser = {
     id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-    full_name: fullName,
+    fullName,
     username: username.toLowerCase(),
     password: hashedPassword,
     role, // 'teacher' or 'student'
-    teacher_id: teacherId
+    teacherId, // If student, links to the teacher who created this account
+    createdAt: new Date().toISOString()
   };
 
-  const { data, error } = await supabase
-    .from('users')
-    .insert([newUser])
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-
-  const { password: _, ...userWithoutPassword } = data;
-  return {
-    id: userWithoutPassword.id,
-    fullName: userWithoutPassword.full_name,
-    username: userWithoutPassword.username,
-    role: userWithoutPassword.role,
-    teacherId: userWithoutPassword.teacher_id,
-    createdAt: userWithoutPassword.created_at
-  };
+  db.users.push(newUser);
+  writeDb(db);
+  
+  // Return user without password
+  const { password: _, ...userWithoutPassword } = newUser;
+  return userWithoutPassword;
 }
 
-async function authenticateUser(username, password) {
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('username', username.toLowerCase())
-    .maybeSingle();
-
-  if (error || !user) return null;
-
+function authenticateUser(username, password) {
+  const db = readDb();
+  const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
+  
+  if (!user) return null;
+  
   const isValid = bcrypt.compareSync(password, user.password);
   if (!isValid) return null;
 
   const { password: _, ...userWithoutPassword } = user;
-  return {
-    id: userWithoutPassword.id,
-    fullName: userWithoutPassword.full_name,
-    username: userWithoutPassword.username,
-    role: userWithoutPassword.role,
-    teacherId: userWithoutPassword.teacher_id,
-    createdAt: userWithoutPassword.created_at
-  };
+  return userWithoutPassword;
 }
 
-async function getStudentsForTeacher(teacherId) {
-  const { data: students, error } = await supabase
-    .from('users')
-    .select('id, full_name, username, role, teacher_id, created_at')
-    .eq('role', 'student')
-    .eq('teacher_id', teacherId);
-
-  if (error) return [];
-  return students.map(s => ({
-    id: s.id,
-    fullName: s.full_name,
-    username: s.username,
-    role: s.role,
-    teacherId: s.teacher_id,
-    createdAt: s.created_at
-  }));
+function getStudentsForTeacher(teacherId) {
+  const db = readDb();
+  return db.users
+    .filter(u => u.role === 'student' && u.teacherId === teacherId)
+    .map(({ password, ...user }) => user);
 }
 
 // --- ASSIGNMENT OPERATIONS ---
 
-async function createAssignment(teacherId, bookName, startPage, endPage, targetDate) {
+function createAssignment(teacherId, bookName, startPage, endPage, targetDate) {
+  const db = readDb();
+  
   const newAssignment = {
     id: 'assign_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-    teacher_id: teacherId,
-    book_name: bookName,
-    start_page: parseInt(startPage),
-    end_page: parseInt(endPage),
-    target_date: targetDate
+    teacherId,
+    bookName,
+    startPage: parseInt(startPage),
+    endPage: parseInt(endPage),
+    targetDate, // Format: YYYY-MM-DD
+    createdAt: new Date().toISOString()
   };
 
-  const { data, error } = await supabase
-    .from('assignments')
-    .insert([newAssignment])
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  
-  return {
-    id: data.id,
-    teacherId: data.teacher_id,
-    bookName: data.book_name,
-    startPage: data.start_page,
-    endPage: data.end_page,
-    targetDate: data.target_date,
-    createdAt: data.created_at
-  };
+  db.assignments.push(newAssignment);
+  writeDb(db);
+  return newAssignment;
 }
 
-async function getAssignmentsForTeacher(teacherId) {
-  const { data: assignments, error } = await supabase
-    .from('assignments')
-    .select('*')
-    .eq('teacher_id', teacherId)
-    .order('target_date', { ascending: false });
-
-  if (error) return [];
-  return assignments.map(a => ({
-    id: a.id,
-    teacherId: a.teacher_id,
-    bookName: a.book_name,
-    startPage: a.start_page,
-    endPage: a.end_page,
-    targetDate: a.target_date,
-    createdAt: a.created_at
-  }));
+function getAssignmentsForTeacher(teacherId) {
+  const db = readDb();
+  return db.assignments
+    .filter(a => a.teacherId === teacherId)
+    .sort((a, b) => b.targetDate.localeCompare(a.targetDate));
 }
 
-async function getAssignmentForStudentToday(studentId) {
-  const { data: student, error: studentError } = await supabase
-    .from('users')
-    .select('teacher_id')
-    .eq('id', studentId)
-    .single();
-
-  if (studentError || !student || !student.teacher_id) return null;
+function getAssignmentForStudentToday(studentId) {
+  const db = readDb();
+  const student = db.users.find(u => u.id === studentId);
+  if (!student || !student.teacherId) return null;
 
   const todayStr = new Date().toLocaleDateString('sv'); // YYYY-MM-DD
-
-  const { data: assignment, error: assignError } = await supabase
-    .from('assignments')
-    .select('*')
-    .eq('teacher_id', student.teacher_id)
-    .eq('target_date', todayStr)
-    .maybeSingle();
-
-  if (assignError || !assignment) return null;
-
-  return {
-    id: assignment.id,
-    teacherId: assignment.teacher_id,
-    bookName: assignment.book_name,
-    startPage: assignment.start_page,
-    endPage: assignment.end_page,
-    targetDate: assignment.target_date,
-    createdAt: assignment.created_at
-  };
+  
+  return db.assignments.find(a => a.teacherId === student.teacherId && a.targetDate === todayStr) || null;
 }
 
-async function getAssignmentsHistoryForStudent(studentId) {
-  const { data: student, error: studentError } = await supabase
-    .from('users')
-    .select('teacher_id')
-    .eq('id', studentId)
-    .single();
+function getAssignmentsHistoryForStudent(studentId) {
+  const db = readDb();
+  const student = db.users.find(u => u.id === studentId);
+  if (!student || !student.teacherId) return [];
 
-  if (studentError || !student || !student.teacher_id) return [];
-
-  const { data: assignments, error: assignError } = await supabase
-    .from('assignments')
-    .select('*')
-    .eq('teacher_id', student.teacher_id)
-    .order('target_date', { ascending: false });
-
-  if (assignError) return [];
-  return assignments.map(a => ({
-    id: a.id,
-    teacherId: a.teacher_id,
-    bookName: a.book_name,
-    startPage: a.start_page,
-    endPage: a.end_page,
-    targetDate: a.target_date,
-    createdAt: a.created_at
-  }));
+  return db.assignments
+    .filter(a => a.teacherId === student.teacherId)
+    .sort((a, b) => b.targetDate.localeCompare(a.targetDate));
 }
 
 // --- SUBMISSION OPERATIONS ---
 
-async function submitProgress(studentId, assignmentId, isCompleted, questions = '', freeSpace = '') {
+function submitProgress(studentId, assignmentId, isCompleted, questions = '', freeSpace = '') {
+  const db = readDb();
+  
   // Check if assignment exists
-  const { data: assignment, error: assignError } = await supabase
-    .from('assignments')
-    .select('id')
-    .eq('id', assignmentId)
-    .maybeSingle();
+  const assignment = db.assignments.find(a => a.id === assignmentId);
+  if (!assignment) throw new Error('الورد المحدد غير موجود');
 
-  if (assignError || !assignment) throw new Error('الورد المحدد غير موجود');
-
-  // Check if submission already exists
-  const { data: existingSubmission, error: subError } = await supabase
-    .from('submissions')
-    .select('id')
-    .eq('student_id', studentId)
-    .eq('assignment_id', assignmentId)
-    .maybeSingle();
+  // Check if already submitted
+  let submissionIndex = db.submissions.findIndex(s => s.studentId === studentId && s.assignmentId === assignmentId);
 
   const submissionData = {
-    id: existingSubmission ? existingSubmission.id : 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-    student_id: studentId,
-    assignment_id: assignmentId,
-    is_completed: !!isCompleted,
+    id: submissionIndex !== -1 ? db.submissions[submissionIndex].id : 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    studentId,
+    assignmentId,
+    isCompleted: !!isCompleted,
     questions: questions.trim(),
-    free_space: freeSpace.trim(),
-    submitted_at: new Date().toISOString()
+    freeSpace: freeSpace.trim(),
+    submittedAt: new Date().toISOString()
   };
 
-  const { data, error } = await supabase
-    .from('submissions')
-    .upsert([submissionData])
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-
-  return {
-    id: data.id,
-    studentId: data.student_id,
-    assignmentId: data.assignment_id,
-    isCompleted: data.is_completed,
-    questions: data.questions,
-    freeSpace: data.free_space,
-    submittedAt: data.submitted_at
-  };
-}
-
-async function getSubmissionsForTeacherDashboard(teacherId) {
-  const { data: submissions, error } = await supabase
-    .from('submissions')
-    .select(`
-      id,
-      student_id,
-      assignment_id,
-      is_completed,
-      questions,
-      free_space,
-      submitted_at,
-      student:users!student_id(full_name),
-      assignment:assignments!assignment_id(book_name, start_page, end_page, target_date, teacher_id)
-    `);
-
-  if (error) {
-    console.error('Error fetching submissions dashboard:', error);
-    return [];
+  if (submissionIndex !== -1) {
+    db.submissions[submissionIndex] = submissionData;
+  } else {
+    db.submissions.push(submissionData);
   }
 
-  return submissions
-    .filter(s => s.assignment && s.assignment.teacher_id === teacherId)
-    .map(s => ({
-      id: s.id,
-      studentId: s.student_id,
-      assignmentId: s.assignment_id,
-      isCompleted: s.is_completed,
-      questions: s.questions,
-      freeSpace: s.free_space,
-      submittedAt: s.submitted_at,
-      studentName: s.student ? s.student.full_name : 'طالب محذوف',
-      bookName: s.assignment.book_name,
-      pages: `${s.assignment.start_page} - ${s.assignment.end_page}`,
-      targetDate: s.assignment.target_date
-    }))
+  writeDb(db);
+  return submissionData;
+}
+
+function getSubmissionsForTeacherDashboard(teacherId) {
+  const db = readDb();
+  
+  // Get all students of this teacher
+  const studentIds = db.users
+    .filter(u => u.role === 'student' && u.teacherId === teacherId)
+    .map(u => u.id);
+
+  // Get all assignments by this teacher
+  const assignmentIds = db.assignments
+    .filter(a => a.teacherId === teacherId)
+    .map(a => a.id);
+
+  // Filter submissions
+  return db.submissions
+    .filter(s => studentIds.includes(s.studentId) && assignmentIds.includes(s.assignmentId))
+    .map(sub => {
+      const student = db.users.find(u => u.id === sub.studentId);
+      const assignment = db.assignments.find(a => a.id === sub.assignmentId);
+      return {
+        ...sub,
+        studentName: student ? student.fullName : 'طالب محذوف',
+        bookName: assignment ? assignment.bookName : 'كتاب غير معروف',
+        pages: assignment ? `${assignment.startPage} - ${assignment.endPage}` : '',
+        targetDate: assignment ? assignment.targetDate : ''
+      };
+    })
     .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
 }
 
-async function getSubmissionsForStudent(studentId) {
-  const { data: submissions, error } = await supabase
-    .from('submissions')
-    .select('*')
-    .eq('student_id', studentId);
-
-  if (error) return [];
-  return submissions.map(s => ({
-    id: s.id,
-    studentId: s.student_id,
-    assignmentId: s.assignment_id,
-    isCompleted: s.is_completed,
-    questions: s.questions,
-    freeSpace: s.free_space,
-    submittedAt: s.submitted_at
-  }));
+function getSubmissionsForStudent(studentId) {
+  const db = readDb();
+  return db.submissions.filter(s => s.studentId === studentId);
 }
 
 module.exports = {
