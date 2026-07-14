@@ -4,15 +4,24 @@ const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 
-// Load config
-let config = {};
-try {
-  config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
-} catch (e) {
-  console.error('Failed to load config.json', e);
+// Load config from environment variables (for Vercel) or fallback to config.json (for local development)
+let supabaseUrl = process.env.SUPABASE_URL;
+let supabaseKey = process.env.SUPABASE_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  try {
+    const configPath = path.join(__dirname, 'config.json');
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      supabaseUrl = supabaseUrl || config.SUPABASE_URL;
+      supabaseKey = supabaseKey || config.SUPABASE_KEY;
+    }
+  } catch (e) {
+    console.error('Failed to load config.json and env variables are missing', e);
+  }
 }
 
-const supabase = createClient(config.SUPABASE_URL, config.SUPABASE_KEY);
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- USER OPERATIONS ---
 
