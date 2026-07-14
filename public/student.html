@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم الطالب | مِداد</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="student.html" class="logo">
+        <div class="logo-icon">📖</div>
+        <span>مِداد | لوحة الطالب</span>
+      </a>
+      <div class="user-nav-info">
+        <span class="user-badge" id="studentName">الطالب</span>
+        <button onclick="logout()" class="btn btn-secondary" style="width: auto; padding: 8px 16px;">تسجيل الخروج</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+    <div id="studentAlert" class="alert"></div>
+
+    <div class="dashboard-grid">
+      <!-- Today's Assignment & Submission -->
+      <section>
+        <!-- Today's Assignment Card -->
+        <div class="card" id="todayAssignmentCard">
+          <h3 class="card-title">ورد القراءة المجدول لليوم 📖</h3>
+          <div id="assignmentDetails">
+            <!-- Loaded dynamically -->
+            <div class="empty-state">
+              <div class="empty-state-icon">⏳</div>
+              جاري تحميل ورد اليوم...
+            </div>
+          </div>
+        </div>
+
+        <!-- Submission Form (displayed inside assignmentDetails or below) -->
+        <div class="card" id="submissionCard" style="display: none;">
+          <h3 class="card-title">تسجيل إنجازك اليومي ✍️</h3>
+          <form id="submissionForm" onsubmit="handleSubmitProgress(event)">
+            <input type="hidden" id="assignmentId">
+            
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" id="isCompleted" required>
+                <span>أؤكد أنني قرأت الورد المطلوب لليوم كاملاً وبتركيز.</span>
+              </label>
+            </div>
+
+            <div class="form-group">
+              <label for="questions">هل لديك أي أسئلة أو استفسارات حول ما قرأت؟ (اختياري)</label>
+              <textarea id="questions" class="form-control" placeholder="اكتب سؤالك هنا ليجيبك عليه المعلم..."></textarea>
+            </div>
+
+            <div class="form-group">
+              <label for="freeSpace">مساحة حرة (تلخيص، خواطر، فكرة أعجبتك) (اختياري)</label>
+              <textarea id="freeSpace" class="form-control" placeholder="اكتب ما يجول في خاطرك حول هذا الورد..."></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">إرسال الإنجاز للمعلم</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- History of Assignments -->
+      <aside>
+        <div class="card">
+          <h3 class="card-title">سجل قراءاتك السابقة 📚</h3>
+          <div class="table-responsive">
+            <table style="font-size: 0.9rem;">
+              <thead>
+                <tr>
+                  <th>الكتاب</th>
+                  <th>الصفحات</th>
+                  <th>التاريخ</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody id="historyList">
+                <tr>
+                  <td colspan="4" class="empty-state">
+                    لا توجد أوراد سابقة مسجلة.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script src="js/student.js"></script>
+</body>
+</html>

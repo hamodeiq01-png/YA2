@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم المعلم | مِداد</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="nav-container">
+      <a href="teacher.html" class="logo">
+        <div class="logo-icon">📖</div>
+        <span>مِداد | لوحة المعلم</span>
+      </a>
+      <div class="user-nav-info">
+        <span class="user-badge" id="teacherName">المعلم</span>
+        <button onclick="logout()" class="btn btn-secondary" style="width: auto; padding: 8px 16px;">تسجيل الخروج</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+    <div id="teacherAlert" class="alert"></div>
+
+    <div class="dashboard-grid">
+      <!-- Sidebar Actions -->
+      <aside>
+        <!-- Add Reading Assignment -->
+        <div class="card">
+          <h3 class="card-title">إضافة ورد قراءة يومي 📅</h3>
+          <form id="assignmentForm" onsubmit="handleCreateAssignment(event)">
+            <div class="form-group">
+              <label for="bookName">اسم الكتاب</label>
+              <input type="text" id="bookName" class="form-control" placeholder="مثال: رياض الصالحين" required>
+            </div>
+            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div>
+                <label for="startPage">من صفحة</label>
+                <input type="number" id="startPage" class="form-control" min="1" required>
+              </div>
+              <div>
+                <label for="endPage">إلى صفحة</label>
+                <input type="number" id="endPage" class="form-control" min="1" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="targetDate">تاريخ الورد</label>
+              <input type="date" id="targetDate" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary">جدولة ونشر الورد</button>
+          </form>
+        </div>
+
+        <!-- Add Student Account -->
+        <div class="card">
+          <h3 class="card-title">إنشاء حساب لطالب جديد 👤</h3>
+          <form id="studentForm" onsubmit="handleCreateStudent(event)">
+            <div class="form-group">
+              <label for="studentFullName">اسم الطالب الكامل</label>
+              <input type="text" id="studentFullName" class="form-control" placeholder="مثال: عمر بن عبد العزيز" required>
+            </div>
+            <div class="form-group">
+              <label for="studentUsername">اسم المستخدم للطالب</label>
+              <input type="text" id="studentUsername" class="form-control" placeholder="مثال: omar_2026" required autocomplete="username">
+            </div>
+            <div class="form-group">
+              <label for="studentPassword">كلمة المرور المؤقتة</label>
+              <input type="password" id="studentPassword" class="form-control" placeholder="أدخل كلمة مرور الطالب" required autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn btn-secondary">إنشاء الحساب</button>
+          </form>
+        </div>
+      </aside>
+
+      <!-- Main Contents -->
+      <section>
+        <!-- Stats summary -->
+        <div class="card" style="padding: 20px;">
+          <h3 style="margin-bottom: 10px;">نظرة عامة على المجموعة 📊</h3>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="student-list-item" style="border-right-color: var(--primary);">
+              <div>
+                <div class="name" style="font-size: 1.5rem;" id="statTotalStudents">0</div>
+                <div class="username">إجمالي الطلاب المسجلين</div>
+              </div>
+            </div>
+            <div class="student-list-item" style="border-right-color: var(--accent);">
+              <div>
+                <div class="name" style="font-size: 1.5rem;" id="statTotalSubmissions">0</div>
+                <div class="username">إجمالي إنجازات القراءة المستلمة</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Progress Tracker -->
+        <div class="card">
+          <h3 class="card-title">تتبع إنجازات الطلاب اليومية</h3>
+          
+          <div class="table-responsive">
+            <table id="submissionsTable">
+              <thead>
+                <tr>
+                  <th>الطالب</th>
+                  <th>الكتاب والصفحات</th>
+                  <th>تاريخ الورد</th>
+                  <th>حالة الإنجاز</th>
+                  <th>الأسئلة والخواطر</th>
+                  <th>وقت التسليم</th>
+                </tr>
+              </thead>
+              <tbody id="submissionsList">
+                <tr>
+                  <td colspan="6" class="empty-state">
+                    <div class="empty-state-icon">📥</div>
+                    لا توجد إنجازات مرسلة بعد. سيظهر إنجاز الطلاب هنا فور إرساله.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Created Assignments List -->
+        <div class="card">
+          <h3 class="card-title">سجل الأوراد المجدولة</h3>
+          <div class="table-responsive">
+            <table id="assignmentsTable">
+              <thead>
+                <tr>
+                  <th>اسم الكتاب</th>
+                  <th>من صفحة</th>
+                  <th>إلى صفحة</th>
+                  <th>تاريخ الورد</th>
+                </tr>
+              </thead>
+              <tbody id="assignmentsList">
+                <tr>
+                  <td colspan="4" class="empty-state">
+                    <div class="empty-state-icon">📅</div>
+                    لا توجد أوراد قراءة مجدولة بعد. أضف ورداً من القائمة الجانبية.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="js/auth.js"></script>
+  <script src="js/teacher.js"></script>
+</body>
+</html>
