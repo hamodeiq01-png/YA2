@@ -227,6 +227,40 @@ app.get('/api/teacher/submissions', authenticateToken, requireTeacher, async (re
   }
 });
 
+// حذف مستخدم (طالب أو معلم)
+app.delete('/api/teacher/delete-user/:userId', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    // منع المعلم من حذف نفسه
+    if (req.params.userId === req.user.id) {
+      return res.status(400).json({ error: 'لا يمكنك حذف حسابك الخاص!' });
+    }
+    await db.deleteUser(req.params.userId);
+    res.json({ message: 'تم حذف المستخدم وجميع بياناته بنجاح.' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// حذف ورد
+app.delete('/api/teacher/delete-assignment/:assignmentId', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    await db.deleteAssignment(req.params.assignmentId);
+    res.json({ message: 'تم حذف الورد بنجاح.' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// جلب جميع المعلمين
+app.get('/api/teacher/all-teachers', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const teachers = await db.getAllTeachers();
+    res.json({ teachers });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ في جلب بيانات المعلمين' });
+  }
+});
+
 // --- STUDENT APIS ---
 
 // Get Today's Assignments for Student (supports multiple)

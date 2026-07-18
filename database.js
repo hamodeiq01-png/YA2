@@ -398,6 +398,64 @@ function mapSubmissionKeys(sub) {
   };
 }
 
+// حذف مستخدم (طالب أو معلم)
+async function deleteUser(userId) {
+  // حذف التسليمات المرتبطة أولاً
+  await supabase.from('submissions').delete().eq('student_id', userId);
+
+  // حذف الطلاب المرتبطين (إذا كان معلماً)
+  const { data: linkedStudents } = await supabase
+    .from('users')
+    .select('id')
+    .eq('teacher_id', userId);
+
+  if (linkedStudents && linkedStudents.length > 0) {
+    for (const s of linkedStudents) {
+      await supabase.from('submissions').delete().eq('student_id', s.id);
+    }
+    await supabase.from('users').delete().eq('teacher_id', userId);
+  }
+
+  // حذف الأوراد المرتبطة (إذا كان معلماً)
+  const { data: linkedAssignments } = await supabase
+    .from('assignments')
+    .select('id')
+    .eq('teacher_id', userId);
+
+  if (linkedAssignments && linkedAssignments.length > 0) {
+    const assignIds = linkedAssignments.map(a => a.id);
+    await supabase.from('submissions').delete().in('assignment_id', assignIds);
+    await supabase.from('assignments').delete().eq('teacher_id', userId);
+  }
+
+  // حذف المستخدم نفسه
+  const { error } = await supabase.from('users').delete().eq('id', userId);
+  if (error) throw new Error('حدث خطأ أثناء حذف المستخدم');
+  return true;
+}
+
+// حذف ورد
+async function deleteAssignment(assignmentId) {
+  // حذف التسليمات المرتبطة أولاً
+  await supabase.from('submissions').delete().eq('assignment_id', assignmentId);
+
+  const { error } = await supabase.from('assignments').delete().eq('id', assignmentId);
+  if (error) throw new Error('حدث خطأ أثناء حذف الورد');
+  return true;
+}
+
+// جلب جميع المعلمين
+async function getAllTeachers() {
+  const { data: teachers, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('role', 'teacher')
+    .order('created_at', { ascending: false });
+
+  if (error) return [];
+  return teachers.map(({ password, ...user }) => mapUserKeys(user));
+}
+
 module.exports = {
   registerStudent,
   createTeacher,
@@ -413,5 +471,8 @@ module.exports = {
   getAssignmentsHistoryForStudent,
   submitProgress,
   getSubmissionsForTeacherDashboard,
-  getSubmissionsForStudent
+  getSubmissionsForStudent,
+  deleteUser,
+  deleteAssignment,
+  getAllTeachers
 };

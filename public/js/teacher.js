@@ -26,8 +26,10 @@ function loadDashboardData() {
   loadAssignments();
   loadSubmissions();
   loadPendingStudents();
+  loadTeachers();
 }
 
+// --- تحميل الطلاب ---
 async function loadStudents() {
   try {
     const response = await fetch(`${API_BASE}/teacher/students`, {
@@ -36,12 +38,66 @@ async function loadStudents() {
     const data = await response.json();
     if (response.ok) {
       document.getElementById('statTotalStudents').textContent = data.students.length;
+
+      const listEl = document.getElementById('studentsListSection');
+      if (data.students.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">لا يوجد طلاب مسجلين بعد.</div>';
+        return;
+      }
+
+      listEl.innerHTML = data.students.map(student => `
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-radius: 10px; margin-bottom: 8px; border-right: 3px solid var(--primary);">
+          <div>
+            <span style="font-weight: 700;">${escapeHtml(student.fullName)}</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">@${escapeHtml(student.username)}</span>
+          </div>
+          <button onclick="handleDeleteUser('${student.id}', '${escapeHtml(student.fullName)}')" style="background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🗑️ حذف</button>
+        </div>
+      `).join('');
     }
   } catch (error) {
     console.error('Error loading students:', error);
   }
 }
 
+// --- تحميل المعلمين ---
+async function loadTeachers() {
+  try {
+    const response = await fetch(`${API_BASE}/teacher/all-teachers`, {
+      headers: getAuthHeaders()
+    });
+    const data = await response.json();
+    if (response.ok) {
+      const currentUser = getUser();
+      const listEl = document.getElementById('teachersListSection');
+      if (data.teachers.length === 0) {
+        listEl.innerHTML = '<div class="empty-state">لا يوجد معلمين.</div>';
+        return;
+      }
+
+      listEl.innerHTML = data.teachers.map(teacher => {
+        const isMe = teacher.id === currentUser.id;
+        const deleteBtn = isMe 
+          ? '<span style="font-size: 0.8rem; color: var(--text-muted);">(أنت)</span>'
+          : `<button onclick="handleDeleteUser('${teacher.id}', '${escapeHtml(teacher.fullName)}')" style="background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🗑️ حذف</button>`;
+
+        return `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-radius: 10px; margin-bottom: 8px; border-right: 3px solid var(--accent);">
+            <div>
+              <span style="font-weight: 700;">${escapeHtml(teacher.fullName)}</span>
+              <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">@${escapeHtml(teacher.username)}</span>
+            </div>
+            ${deleteBtn}
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (error) {
+    console.error('Error loading teachers:', error);
+  }
+}
+
+// --- تحميل الطلاب المعلقين ---
 async function loadPendingStudents() {
   try {
     const response = await fetch(`${API_BASE}/teacher/pending-students`, {
@@ -66,7 +122,7 @@ async function loadPendingStudents() {
           year: 'numeric', month: 'short', day: 'numeric'
         });
         return `
-          <div class="pending-student-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border-radius: 10px; margin-bottom: 10px; border-right: 4px solid #f59e0b;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border-radius: 10px; margin-bottom: 10px; border-right: 4px solid #f59e0b;">
             <div>
               <div style="font-weight: 700; color: var(--text-primary);">${escapeHtml(student.fullName)}</div>
               <div style="font-size: 0.85rem; color: var(--text-muted);">@${escapeHtml(student.username)} · سجّل في ${date}</div>
@@ -84,44 +140,7 @@ async function loadPendingStudents() {
   }
 }
 
-async function approveStudent(studentId) {
-  try {
-    const response = await fetch(`${API_BASE}/teacher/approve-student`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ studentId })
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error);
-
-    showAlert('teacherAlert', data.message, 'success');
-    loadDashboardData();
-  } catch (error) {
-    showAlert('teacherAlert', error.message, 'danger');
-  }
-}
-
-async function rejectStudent(studentId) {
-  if (!confirm('هل أنت متأكد من رفض هذا الطالب؟ سيتم حذف حسابه نهائياً.')) return;
-
-  try {
-    const response = await fetch(`${API_BASE}/teacher/reject-student`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ studentId })
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error);
-
-    showAlert('teacherAlert', 'تم رفض الطالب وحذف حسابه.', 'success');
-    loadDashboardData();
-  } catch (error) {
-    showAlert('teacherAlert', error.message, 'danger');
-  }
-}
-
+// --- الأوراد ---
 async function loadAssignments() {
   try {
     const response = await fetch(`${API_BASE}/teacher/assignments`, {
@@ -133,9 +152,9 @@ async function loadAssignments() {
       if (data.assignments.length === 0) {
         listEl.innerHTML = `
           <tr>
-            <td colspan="4" class="empty-state">
+            <td colspan="5" class="empty-state">
               <div class="empty-state-icon">📅</div>
-              لا توجد أوراد قراءة مجدولة بعد. أضف ورداً من القائمة الجانبية.
+              لا توجد أوراد قراءة مجدولة بعد.
             </td>
           </tr>`;
         return;
@@ -147,6 +166,9 @@ async function loadAssignments() {
           <td>${a.startPage}</td>
           <td>${a.endPage}</td>
           <td><span class="user-badge" style="background-color: var(--primary-glow);">${a.targetDate}</span></td>
+          <td>
+            <button onclick="handleDeleteAssignment('${a.id}', '${escapeHtml(a.bookName)}')" style="background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🗑️ حذف</button>
+          </td>
         </tr>
       `).join('');
     }
@@ -155,6 +177,7 @@ async function loadAssignments() {
   }
 }
 
+// --- الإنجازات ---
 async function loadSubmissions() {
   try {
     const response = await fetch(`${API_BASE}/teacher/submissions`, {
@@ -170,44 +193,30 @@ async function loadSubmissions() {
           <tr>
             <td colspan="6" class="empty-state">
               <div class="empty-state-icon">📥</div>
-              لا توجد إنجازات مرسلة بعد. سيظهر إنجاز الطلاب هنا فور إرساله.
+              لا توجد إنجازات مرسلة بعد.
             </td>
           </tr>`;
         return;
       }
 
       listEl.innerHTML = data.submissions.map(sub => {
-        let statusBadge = '';
-        if (sub.isCompleted) {
-          statusBadge = '<span class="badge badge-success">أنجز القراءة ✓</span>';
-        } else {
-          statusBadge = '<span class="badge badge-danger">لم ينجز القراءة ✗</span>';
-        }
+        let statusBadge = sub.isCompleted
+          ? '<span class="badge badge-success">أنجز القراءة ✓</span>'
+          : '<span class="badge badge-danger">لم ينجز القراءة ✗</span>';
 
-        // Generate details section for questions/freeSpace if present
         let detailsHtml = '';
         if (sub.questions) {
-          detailsHtml += `
-            <div class="detail-box">
-              <div class="detail-box-title">❓ سؤال من الطالب:</div>
-              <div>${escapeHtml(sub.questions)}</div>
-            </div>`;
+          detailsHtml += `<div class="detail-box"><div class="detail-box-title">❓ سؤال:</div><div>${escapeHtml(sub.questions)}</div></div>`;
         }
         if (sub.freeSpace) {
-          detailsHtml += `
-            <div class="detail-box">
-              <div class="detail-box-title">📝 مساحة حرة / تلخيص:</div>
-              <div>${escapeHtml(sub.freeSpace)}</div>
-            </div>`;
+          detailsHtml += `<div class="detail-box"><div class="detail-box-title">📝 مساحة حرة:</div><div>${escapeHtml(sub.freeSpace)}</div></div>`;
         }
-
         if (!detailsHtml) {
           detailsHtml = '<span style="color: var(--text-muted); font-size: 0.9rem;">لا توجد ملاحظات</span>';
         }
 
         const dateFormatted = new Date(sub.submittedAt).toLocaleTimeString('ar-EG', {
-          hour: '2-digit',
-          minute: '2-digit'
+          hour: '2-digit', minute: '2-digit'
         }) + ' - ' + new Date(sub.submittedAt).toLocaleDateString('ar-EG');
 
         return `
@@ -230,6 +239,84 @@ async function loadSubmissions() {
   }
 }
 
+// --- وظائف الحذف ---
+
+async function handleDeleteUser(userId, userName) {
+  if (!confirm(`هل أنت متأكد من حذف "${userName}"؟\nسيتم حذف جميع بياناته نهائياً!`)) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/delete-user/${userId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', data.message, 'success');
+    loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
+  }
+}
+
+async function handleDeleteAssignment(assignmentId, bookName) {
+  if (!confirm(`هل أنت متأكد من حذف ورد "${bookName}"؟\nسيتم حذف جميع التسليمات المرتبطة به!`)) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/delete-assignment/${assignmentId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', data.message, 'success');
+    loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
+  }
+}
+
+// --- الموافقة / الرفض ---
+
+async function approveStudent(studentId) {
+  try {
+    const response = await fetch(`${API_BASE}/teacher/approve-student`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ studentId })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', data.message, 'success');
+    loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
+  }
+}
+
+async function rejectStudent(studentId) {
+  if (!confirm('هل أنت متأكد من رفض هذا الطالب؟ سيتم حذف حسابه نهائياً.')) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/reject-student`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ studentId })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', 'تم رفض الطالب وحذف حسابه.', 'success');
+    loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
+  }
+}
+
+// --- إنشاء الأوراد والحسابات ---
+
 async function handleCreateAssignment(e) {
   e.preventDefault();
   const bookName = document.getElementById('bookName').value;
@@ -243,7 +330,6 @@ async function handleCreateAssignment(e) {
       headers: getAuthHeaders(),
       body: JSON.stringify({ bookName, startPage, endPage, targetDate })
     });
-
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
 
@@ -268,7 +354,6 @@ async function handleCreateStudent(e) {
       headers: getAuthHeaders(),
       body: JSON.stringify({ fullName, username, password })
     });
-
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
 
@@ -292,18 +377,18 @@ async function handleCreateTeacher(e) {
       headers: getAuthHeaders(),
       body: JSON.stringify({ fullName, username, password })
     });
-
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
 
     showAlert('teacherAlert', `تم إنشاء حساب المعلم "${fullName}" بنجاح!`, 'success');
     document.getElementById('teacherForm').reset();
+    loadDashboardData();
   } catch (error) {
     showAlert('teacherAlert', error.message, 'danger');
   }
 }
 
-// Simple HTML escaping helper for security
+// Simple HTML escaping helper
 function escapeHtml(str) {
   if (!str) return '';
   return str

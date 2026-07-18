@@ -132,6 +132,22 @@
           </div>
         </div>
 
+        <!-- قائمة الطلاب المسجلين -->
+        <div class="card">
+          <h3 class="card-title">طلابي المسجلين 👥</h3>
+          <div id="studentsListSection">
+            <div class="empty-state">لا يوجد طلاب مسجلين.</div>
+          </div>
+        </div>
+
+        <!-- قائمة المعلمين -->
+        <div class="card">
+          <h3 class="card-title">المعلمين المسجلين 🎓</h3>
+          <div id="teachersListSection">
+            <div class="empty-state">لا يوجد معلمين.</div>
+          </div>
+        </div>
+
         <!-- Progress Tracker -->
         <div class="card">
           <h3 class="card-title">تتبع إنجازات الطلاب اليومية</h3>
@@ -152,7 +168,7 @@
                 <tr>
                   <td colspan="6" class="empty-state">
                     <div class="empty-state-icon">📥</div>
-                    لا توجد إنجازات مرسلة بعد. سيظهر إنجاز الطلاب هنا فور إرساله.
+                    لا توجد إنجازات مرسلة بعد.
                   </td>
                 </tr>
               </tbody>
@@ -171,11 +187,12 @@
                   <th>من صفحة</th>
                   <th>إلى صفحة</th>
                   <th>تاريخ الورد</th>
+                  <th>إجراء</th>
                 </tr>
               </thead>
               <tbody id="assignmentsList">
                 <tr>
-                  <td colspan="4" class="empty-state">
+                  <td colspan="5" class="empty-state">
                     <div class="empty-state-icon">📅</div>
                     لا توجد أوراد قراءة مجدولة بعد. أضف ورداً من القائمة الجانبية.
                   </td>
