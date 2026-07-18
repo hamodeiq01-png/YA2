@@ -453,3 +453,216 @@ tr:hover {
   color: #991B1B;
   border: 1px solid #FCA5A5;
 }
+
+/* ===== RESPONSIVE - TABLET ===== */
+@media (max-width: 768px) {
+  /* Navigation */
+  .nav-container {
+    padding: 10px 4%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .logo {
+    font-size: 1.15rem;
+    gap: 8px;
+  }
+
+  .logo-icon {
+    width: 32px !important;
+    height: 32px !important;
+  }
+
+  .user-nav-info {
+    gap: 8px;
+  }
+
+  .user-badge {
+    font-size: 0.75rem;
+    padding: 4px 10px;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Container */
+  .container {
+    width: 95%;
+    padding: 12px 0;
+  }
+
+  /* Auth */
+  .auth-wrapper {
+    padding: 20px 12px;
+  }
+
+  .auth-card {
+    padding: 24px 18px;
+  }
+
+  .auth-header h2 {
+    font-size: 1.4rem;
+  }
+
+  /* Dashboard Grid */
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  /* Cards */
+  .card {
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+    padding-bottom: 10px;
+    margin-bottom: 14px;
+  }
+
+  /* Stats Grid */
+  .card [style*="grid-template-columns: 1fr 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .card [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Student List Items (Stats) */
+  .student-list-item {
+    padding: 10px 12px;
+  }
+
+  .student-list-item .name {
+    font-size: 1.3rem !important;
+  }
+
+  /* Tables */
+  th, td {
+    padding: 10px 8px;
+    font-size: 0.85rem;
+  }
+
+  /* Form elements */
+  .form-control {
+    padding: 10px 12px;
+    font-size: 0.95rem;
+  }
+
+  .btn {
+    padding: 10px 16px;
+    font-size: 0.95rem;
+  }
+
+  /* Pending / User list items */
+  .pending-student-item,
+  [style*="display: flex; align-items: center; justify-content: space-between; padding"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  [style*="display: flex; gap: 8px"] {
+    justify-content: flex-end;
+  }
+
+  /* Tabs */
+  .tab-btn {
+    font-size: 0.9rem;
+    padding: 8px 6px;
+  }
+
+  /* Detail boxes */
+  .detail-box {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 24px 12px;
+  }
+
+  .empty-state-icon {
+    font-size: 2.2rem;
+  }
+}
+
+/* ===== RESPONSIVE - SMALL PHONE ===== */
+@media (max-width: 480px) {
+  .nav-container {
+    padding: 8px 3%;
+  }
+
+  .logo {
+    font-size: 1rem;
+  }
+
+  .logo span {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .user-nav-info {
+    gap: 6px;
+  }
+
+  .user-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    max-width: 100px;
+  }
+
+  .user-nav-info .btn {
+    padding: 6px 10px !important;
+    font-size: 0.8rem !important;
+  }
+
+  .auth-card {
+    padding: 20px 14px;
+  }
+
+  .auth-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .card {
+    padding: 14px 12px;
+  }
+
+  .card-title {
+    font-size: 0.95rem;
+  }
+
+  th, td {
+    padding: 8px 6px;
+    font-size: 0.8rem;
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+  }
+
+  /* Assignment block in student page */
+  [style*="display: flex; gap: 20px; align-items: center"] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  /* Inline delete buttons */
+  button[style*="background: #ef4444"] {
+    padding: 5px 10px !important;
+    font-size: 0.8rem !important;
+  }
+}
