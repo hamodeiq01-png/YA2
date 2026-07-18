@@ -1,207 +1,295 @@
-const fs = require('fs');
-const path = require('path');
+require('dotenv').config();
+const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
 
-const DB_PATH = path.join(__dirname, 'db.json');
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_KEY;
 
-// Initialize database file if it doesn't exist
-function initDb() {
-  if (!fs.existsSync(DB_PATH)) {
-    const initialData = {
-      users: [],
-      assignments: [],
-      submissions: []
-    };
-    fs.writeFileSync(DB_PATH, JSON.stringify(initialData, null, 2), 'utf8');
-  }
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase URL or Key is missing in environment variables.');
+  process.exit(1);
 }
 
-// Helper to read database
-function readDb() {
-  initDb();
-  try {
-    const data = fs.readFileSync(DB_PATH, 'utf8');
-    return JSON.parse(data);
-  } catch (error) {
-    console.error('Error reading database file:', error);
-    return { users: [], assignments: [], submissions: [] };
-  }
-}
-
-// Helper to write database
-function writeDb(data) {
-  try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf8');
-    return true;
-  } catch (error) {
-    console.error('Error writing to database file:', error);
-    return false;
-  }
-}
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- USER OPERATIONS ---
 
-function createUser(fullName, username, password, role, teacherId = null) {
-  const db = readDb();
-  
+async function createUser(fullName, username, password, role, teacherId = null) {
   // Check if username already exists
-  if (db.users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('username', username)
+    .single();
+
+  if (existingUser) {
     throw new Error('اسم المستخدم موجود بالفعل');
   }
 
   const salt = bcrypt.genSaltSync(10);
   const hashedPassword = bcrypt.hashSync(password, salt);
 
-  const newUser = {
-    id: 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-    fullName,
-    username: username.toLowerCase(),
-    password: hashedPassword,
-    role, // 'teacher' or 'student'
-    teacherId, // If student, links to the teacher who created this account
-    createdAt: new Date().toISOString()
-  };
+  const { data, error } = await supabase
+    .from('users')
+    .insert([{
+      full_name: fullName,
+      username: username.toLowerCase(),
+      password: hashedPassword,
+      role: role,
+      teacher_id: teacherId
+    }])
+    .select()
+    .single();
 
-  db.users.push(newUser);
-  writeDb(db);
-  
+  if (error) {
+    throw new Error(error.message);
+  }
+
   // Return user without password
-  const { password: _, ...userWithoutPassword } = newUser;
-  return userWithoutPassword;
+  const { password: _, ...userWithoutPassword } = data;
+  return mapUserKeys(userWithoutPassword);
 }
 
-function authenticateUser(username, password) {
-  const db = readDb();
-  const user = db.users.find(u => u.username.toLowerCase() === username.toLowerCase());
-  
-  if (!user) return null;
-  
+async function authenticateUser(username, password) {
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('*')
+    .ilike('username', username)
+    .single();
+
+  if (error || !user) return null;
+
   const isValid = bcrypt.compareSync(password, user.password);
   if (!isValid) return null;
 
   const { password: _, ...userWithoutPassword } = user;
-  return userWithoutPassword;
+  return mapUserKeys(userWithoutPassword);
 }
 
-function getStudentsForTeacher(teacherId) {
-  const db = readDb();
-  return db.users
-    .filter(u => u.role === 'student' && u.teacherId === teacherId)
-    .map(({ password, ...user }) => user);
+async function getStudentsForTeacher(teacherId) {
+  const { data: students, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('role', 'student')
+    .eq('teacher_id', teacherId);
+
+  if (error) return [];
+  return students.map(({ password, ...user }) => mapUserKeys(user));
 }
 
 // --- ASSIGNMENT OPERATIONS ---
 
-function createAssignment(teacherId, bookName, startPage, endPage, targetDate) {
-  const db = readDb();
-  
-  const newAssignment = {
-    id: 'assign_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-    teacherId,
-    bookName,
-    startPage: parseInt(startPage),
-    endPage: parseInt(endPage),
-    targetDate, // Format: YYYY-MM-DD
-    createdAt: new Date().toISOString()
-  };
+async function createAssignment(teacherId, bookName, startPage, endPage, targetDate) {
+  const { data, error } = await supabase
+    .from('assignments')
+    .insert([{
+      teacher_id: teacherId,
+      book_name: bookName,
+      start_page: parseInt(startPage),
+      end_page: parseInt(endPage),
+      target_date: targetDate
+    }])
+    .select()
+    .single();
 
-  db.assignments.push(newAssignment);
-  writeDb(db);
-  return newAssignment;
+  if (error) {
+    throw new Error(error.message);
+  }
+  return mapAssignmentKeys(data);
 }
 
-function getAssignmentsForTeacher(teacherId) {
-  const db = readDb();
-  return db.assignments
-    .filter(a => a.teacherId === teacherId)
-    .sort((a, b) => b.targetDate.localeCompare(a.targetDate));
+async function getAssignmentsForTeacher(teacherId) {
+  const { data: assignments, error } = await supabase
+    .from('assignments')
+    .select('*')
+    .eq('teacher_id', teacherId)
+    .order('target_date', { ascending: false });
+
+  if (error) return [];
+  return assignments.map(mapAssignmentKeys);
 }
 
-function getAssignmentForStudentToday(studentId) {
-  const db = readDb();
-  const student = db.users.find(u => u.id === studentId);
-  if (!student || !student.teacherId) return null;
+async function getAssignmentForStudentToday(studentId) {
+  // First get the student's teacher
+  const { data: student } = await supabase
+    .from('users')
+    .select('teacher_id')
+    .eq('id', studentId)
+    .single();
+
+  if (!student || !student.teacher_id) return null;
 
   const todayStr = new Date().toLocaleDateString('sv'); // YYYY-MM-DD
-  
-  return db.assignments.find(a => a.teacherId === student.teacherId && a.targetDate === todayStr) || null;
+
+  const { data: assignment, error } = await supabase
+    .from('assignments')
+    .select('*')
+    .eq('teacher_id', student.teacher_id)
+    .eq('target_date', todayStr)
+    .single();
+
+  if (error || !assignment) return null;
+  return mapAssignmentKeys(assignment);
 }
 
-function getAssignmentsHistoryForStudent(studentId) {
-  const db = readDb();
-  const student = db.users.find(u => u.id === studentId);
-  if (!student || !student.teacherId) return [];
+async function getAssignmentsHistoryForStudent(studentId) {
+  const { data: student } = await supabase
+    .from('users')
+    .select('teacher_id')
+    .eq('id', studentId)
+    .single();
 
-  return db.assignments
-    .filter(a => a.teacherId === student.teacherId)
-    .sort((a, b) => b.targetDate.localeCompare(a.targetDate));
+  if (!student || !student.teacher_id) return [];
+
+  const { data: assignments, error } = await supabase
+    .from('assignments')
+    .select('*')
+    .eq('teacher_id', student.teacher_id)
+    .order('target_date', { ascending: false });
+
+  if (error) return [];
+  return assignments.map(mapAssignmentKeys);
 }
 
 // --- SUBMISSION OPERATIONS ---
 
-function submitProgress(studentId, assignmentId, isCompleted, questions = '', freeSpace = '') {
-  const db = readDb();
-  
-  // Check if assignment exists
-  const assignment = db.assignments.find(a => a.id === assignmentId);
-  if (!assignment) throw new Error('الورد المحدد غير موجود');
-
+async function submitProgress(studentId, assignmentId, isCompleted, questions = '', freeSpace = '') {
   // Check if already submitted
-  let submissionIndex = db.submissions.findIndex(s => s.studentId === studentId && s.assignmentId === assignmentId);
+  const { data: existingSubmission } = await supabase
+    .from('submissions')
+    .select('id')
+    .eq('student_id', studentId)
+    .eq('assignment_id', assignmentId)
+    .single();
 
-  const submissionData = {
-    id: submissionIndex !== -1 ? db.submissions[submissionIndex].id : 'sub_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
-    studentId,
-    assignmentId,
-    isCompleted: !!isCompleted,
-    questions: questions.trim(),
-    freeSpace: freeSpace.trim(),
-    submittedAt: new Date().toISOString()
-  };
+  let submissionData;
 
-  if (submissionIndex !== -1) {
-    db.submissions[submissionIndex] = submissionData;
+  if (existingSubmission) {
+    // Update
+    const { data, error } = await supabase
+      .from('submissions')
+      .update({
+        is_completed: !!isCompleted,
+        questions: questions.trim(),
+        free_space: freeSpace.trim(),
+        submitted_at: new Date().toISOString()
+      })
+      .eq('id', existingSubmission.id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    submissionData = data;
   } else {
-    db.submissions.push(submissionData);
+    // Insert
+    const { data, error } = await supabase
+      .from('submissions')
+      .insert([{
+        student_id: studentId,
+        assignment_id: assignmentId,
+        is_completed: !!isCompleted,
+        questions: questions.trim(),
+        free_space: freeSpace.trim()
+      }])
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    submissionData = data;
   }
 
-  writeDb(db);
-  return submissionData;
+  return mapSubmissionKeys(submissionData);
 }
 
-function getSubmissionsForTeacherDashboard(teacherId) {
-  const db = readDb();
+async function getSubmissionsForTeacherDashboard(teacherId) {
+  // Get all assignments for this teacher
+  const { data: assignments, error: err1 } = await supabase
+    .from('assignments')
+    .select('id, book_name, start_page, end_page, target_date')
+    .eq('teacher_id', teacherId);
+
+  if (err1 || !assignments.length) return [];
   
-  // Get all students of this teacher
-  const studentIds = db.users
-    .filter(u => u.role === 'student' && u.teacherId === teacherId)
-    .map(u => u.id);
+  const assignmentIds = assignments.map(a => a.id);
 
-  // Get all assignments by this teacher
-  const assignmentIds = db.assignments
-    .filter(a => a.teacherId === teacherId)
-    .map(a => a.id);
+  // Get submissions for these assignments
+  // Also join with users to get student name
+  const { data: submissions, error: err2 } = await supabase
+    .from('submissions')
+    .select(`
+      *,
+      users:student_id (full_name)
+    `)
+    .in('assignment_id', assignmentIds)
+    .order('submitted_at', { ascending: false });
 
-  // Filter submissions
-  return db.submissions
-    .filter(s => studentIds.includes(s.studentId) && assignmentIds.includes(s.assignmentId))
-    .map(sub => {
-      const student = db.users.find(u => u.id === sub.studentId);
-      const assignment = db.assignments.find(a => a.id === sub.assignmentId);
-      return {
-        ...sub,
-        studentName: student ? student.fullName : 'طالب محذوف',
-        bookName: assignment ? assignment.bookName : 'كتاب غير معروف',
-        pages: assignment ? `${assignment.startPage} - ${assignment.endPage}` : '',
-        targetDate: assignment ? assignment.targetDate : ''
-      };
-    })
-    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+  if (err2 || !submissions) return [];
+
+  return submissions.map(sub => {
+    const assignment = assignments.find(a => a.id === sub.assignment_id);
+    return {
+      id: sub.id,
+      studentId: sub.student_id,
+      assignmentId: sub.assignment_id,
+      isCompleted: sub.is_completed,
+      questions: sub.questions,
+      freeSpace: sub.free_space,
+      submittedAt: sub.submitted_at,
+      studentName: sub.users ? sub.users.full_name : 'طالب محذوف',
+      bookName: assignment ? assignment.book_name : 'كتاب غير معروف',
+      pages: assignment ? `${assignment.start_page} - ${assignment.end_page}` : '',
+      targetDate: assignment ? assignment.target_date : ''
+    };
+  });
 }
 
-function getSubmissionsForStudent(studentId) {
-  const db = readDb();
-  return db.submissions.filter(s => s.studentId === studentId);
+async function getSubmissionsForStudent(studentId) {
+  const { data: submissions, error } = await supabase
+    .from('submissions')
+    .select('*')
+    .eq('student_id', studentId);
+
+  if (error) return [];
+  return submissions.map(mapSubmissionKeys);
+}
+
+// Helpers to map snake_case from DB to camelCase for JS
+function mapUserKeys(user) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    fullName: user.full_name,
+    username: user.username,
+    role: user.role,
+    teacherId: user.teacher_id,
+    createdAt: user.created_at
+  };
+}
+
+function mapAssignmentKeys(assignment) {
+  if (!assignment) return null;
+  return {
+    id: assignment.id,
+    teacherId: assignment.teacher_id,
+    bookName: assignment.book_name,
+    startPage: assignment.start_page,
+    endPage: assignment.end_page,
+    targetDate: assignment.target_date,
+    createdAt: assignment.created_at
+  };
+}
+
+function mapSubmissionKeys(sub) {
+  if (!sub) return null;
+  return {
+    id: sub.id,
+    studentId: sub.student_id,
+    assignmentId: sub.assignment_id,
+    isCompleted: sub.is_completed,
+    questions: sub.questions,
+    freeSpace: sub.free_space,
+    submittedAt: sub.submitted_at
+  };
 }
 
 module.exports = {
