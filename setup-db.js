@@ -3,70 +3,68 @@ const { Client } = require('pg');
 const connectionString = 'postgresql://postgres.eedfepjatrxgpdowybyw:BuAIqJ39wTPhMRgI@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres';
 
 const SQL = `
--- جدول المستخدمين
-CREATE TABLE IF NOT EXISTS users (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  full_name TEXT NOT NULL,
-  username TEXT NOT NULL UNIQUE,
-  password TEXT NOT NULL,
-  role TEXT NOT NULL CHECK (role IN ('teacher', 'student')),
-  teacher_id UUID REFERENCES users(id),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+-- منح جميع الصلاحيات على الجداول لجميع الأدوار
+GRANT ALL ON TABLE public.users TO anon;
+GRANT ALL ON TABLE public.users TO authenticated;
+GRANT ALL ON TABLE public.users TO service_role;
 
--- جدول المهام
-CREATE TABLE IF NOT EXISTS assignments (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  teacher_id UUID REFERENCES users(id) NOT NULL,
-  book_name TEXT NOT NULL,
-  start_page INTEGER NOT NULL,
-  end_page INTEGER NOT NULL,
-  target_date DATE NOT NULL,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
-);
-ALTER TABLE assignments DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.assignments TO anon;
+GRANT ALL ON TABLE public.assignments TO authenticated;
+GRANT ALL ON TABLE public.assignments TO service_role;
 
--- جدول الإنجازات
-CREATE TABLE IF NOT EXISTS submissions (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  student_id UUID REFERENCES users(id) NOT NULL,
-  assignment_id UUID REFERENCES assignments(id) NOT NULL,
-  is_completed BOOLEAN DEFAULT false,
-  questions TEXT,
-  free_space TEXT,
-  submitted_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
-  UNIQUE(student_id, assignment_id)
-);
-ALTER TABLE submissions DISABLE ROW LEVEL SECURITY;
+GRANT ALL ON TABLE public.submissions TO anon;
+GRANT ALL ON TABLE public.submissions TO authenticated;
+GRANT ALL ON TABLE public.submissions TO service_role;
+
+-- منح صلاحية استخدام الـ schema
+GRANT USAGE ON SCHEMA public TO anon;
+GRANT USAGE ON SCHEMA public TO authenticated;
+GRANT USAGE ON SCHEMA public TO service_role;
+
+-- تأكيد تعطيل RLS
+ALTER TABLE public.users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.assignments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.submissions DISABLE ROW LEVEL SECURITY;
 `;
 
-async function setup() {
+async function fix() {
   const client = new Client({ connectionString, ssl: { rejectUnauthorized: false } });
   
   try {
-    console.log('جاري الاتصال بقاعدة البيانات...');
+    console.log('جاري الاتصال...');
     await client.connect();
-    console.log('✅ تم الاتصال بنجاح!');
+    console.log('✅ تم الاتصال');
     
-    console.log('جاري إنشاء الجداول...');
+    console.log('جاري منح الصلاحيات...');
     await client.query(SQL);
-    console.log('✅ تم إنشاء جميع الجداول بنجاح!');
+    console.log('✅ تم منح جميع الصلاحيات بنجاح!');
     
-    // Verify tables exist
+    // Verify
     const res = await client.query(`
-      SELECT table_name FROM information_schema.tables 
-      WHERE table_schema = 'public' AND table_name IN ('users', 'assignments', 'submissions')
-      ORDER BY table_name;
+      SELECT tablename, rowsecurity 
+      FROM pg_tables 
+      WHERE schemaname = 'public' AND tablename IN ('users', 'assignments', 'submissions');
     `);
-    console.log('الجداول الموجودة:');
-    res.rows.forEach(r => console.log('  ✓ ' + r.table_name));
+    console.log('حالة الجداول:');
+    res.rows.forEach(r => console.log(`  ✓ ${r.tablename} - RLS: ${r.rowsecurity ? 'مفعّل' : 'معطّل'}`));
+
+    // Check grants
+    const grants = await client.query(`
+      SELECT grantee, table_name, privilege_type
+      FROM information_schema.table_privileges
+      WHERE table_schema = 'public' 
+        AND table_name IN ('users', 'assignments', 'submissions')
+        AND grantee IN ('anon', 'authenticated', 'service_role')
+      ORDER BY table_name, grantee;
+    `);
+    console.log('\nالصلاحيات الممنوحة:');
+    grants.rows.forEach(r => console.log(`  ✓ ${r.table_name} -> ${r.grantee}: ${r.privilege_type}`));
     
   } catch (err) {
-    console.error('❌ حدث خطأ:', err.message);
+    console.error('❌ خطأ:', err.message);
   } finally {
     await client.end();
   }
 }
 
-setup();
+fix();
