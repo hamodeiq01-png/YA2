@@ -25,6 +25,7 @@ function loadDashboardData() {
   loadStudents();
   loadAssignments();
   loadSubmissions();
+  loadPendingStudents();
 }
 
 async function loadStudents() {
@@ -38,6 +39,86 @@ async function loadStudents() {
     }
   } catch (error) {
     console.error('Error loading students:', error);
+  }
+}
+
+async function loadPendingStudents() {
+  try {
+    const response = await fetch(`${API_BASE}/teacher/pending-students`, {
+      headers: getAuthHeaders()
+    });
+    const data = await response.json();
+    if (response.ok) {
+      const pendingCount = data.students.length;
+      document.getElementById('statPendingStudents').textContent = pendingCount;
+
+      const card = document.getElementById('pendingStudentsCard');
+      const listEl = document.getElementById('pendingStudentsList');
+
+      if (pendingCount === 0) {
+        card.style.display = 'none';
+        return;
+      }
+
+      card.style.display = 'block';
+      listEl.innerHTML = data.students.map(student => {
+        const date = new Date(student.createdAt).toLocaleDateString('ar-EG', {
+          year: 'numeric', month: 'short', day: 'numeric'
+        });
+        return `
+          <div class="pending-student-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border-radius: 10px; margin-bottom: 10px; border-right: 4px solid #f59e0b;">
+            <div>
+              <div style="font-weight: 700; color: var(--text-primary);">${escapeHtml(student.fullName)}</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted);">@${escapeHtml(student.username)} · سجّل في ${date}</div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button onclick="approveStudent('${student.id}')" class="btn btn-primary" style="width: auto; padding: 8px 18px; font-size: 0.85rem;">✓ قبول</button>
+              <button onclick="rejectStudent('${student.id}')" class="btn btn-secondary" style="width: auto; padding: 8px 18px; font-size: 0.85rem; background: #ef4444; border-color: #ef4444; color: white;">✗ رفض</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch (error) {
+    console.error('Error loading pending students:', error);
+  }
+}
+
+async function approveStudent(studentId) {
+  try {
+    const response = await fetch(`${API_BASE}/teacher/approve-student`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ studentId })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', data.message, 'success');
+    loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
+  }
+}
+
+async function rejectStudent(studentId) {
+  if (!confirm('هل أنت متأكد من رفض هذا الطالب؟ سيتم حذف حسابه نهائياً.')) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/reject-student`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ studentId })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', 'تم رفض الطالب وحذف حسابه.', 'success');
+    loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
   }
 }
 
@@ -194,6 +275,29 @@ async function handleCreateStudent(e) {
     showAlert('teacherAlert', `تم إنشاء حساب الطالب "${fullName}" بنجاح!`, 'success');
     document.getElementById('studentForm').reset();
     loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
+  }
+}
+
+async function handleCreateTeacher(e) {
+  e.preventDefault();
+  const fullName = document.getElementById('newTeacherFullName').value;
+  const username = document.getElementById('newTeacherUsername').value;
+  const password = document.getElementById('newTeacherPassword').value;
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/create-teacher`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ fullName, username, password })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', `تم إنشاء حساب المعلم "${fullName}" بنجاح!`, 'success');
+    document.getElementById('teacherForm').reset();
   } catch (error) {
     showAlert('teacherAlert', error.message, 'danger');
   }

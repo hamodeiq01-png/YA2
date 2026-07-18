@@ -52,17 +52,17 @@ function requireStudent(req, res, next) {
 
 // --- AUTHENTICATION APIS ---
 
-// Register Teacher
-app.post('/api/auth/register-teacher', async (req, res) => {
+// تسجيل طالب جديد (بانتظار موافقة المعلم)
+app.post('/api/auth/register-student', async (req, res) => {
   const { fullName, username, password } = req.body;
-  
+
   if (!fullName || !username || !password) {
     return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
   }
 
   try {
-    const user = await db.createUser(fullName, username, password, 'teacher');
-    res.status(201).json({ message: 'تم تسجيل المعلم بنجاح', user });
+    const user = await db.registerStudent(fullName, username, password);
+    res.status(201).json({ message: 'تم تسجيل حسابك بنجاح! بانتظار موافقة المعلم.', user });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -95,7 +95,8 @@ app.post('/api/auth/login', async (req, res) => {
       user
     });
   } catch (error) {
-    res.status(500).json({ error: 'حدث خطأ في الخادم' });
+    // رسالة خاصة للطلاب غير المعتمدين
+    res.status(403).json({ error: error.message });
   }
 });
 
@@ -105,6 +106,64 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 });
 
 // --- TEACHER APIS ---
+
+// إنشاء حساب معلم جديد بواسطة معلم حالي
+app.post('/api/teacher/create-teacher', authenticateToken, requireTeacher, async (req, res) => {
+  const { fullName, username, password } = req.body;
+
+  if (!fullName || !username || !password) {
+    return res.status(400).json({ error: 'جميع الحقول مطلوبة' });
+  }
+
+  try {
+    const teacher = await db.createTeacher(fullName, username, password);
+    res.status(201).json({ message: 'تم إنشاء حساب المعلم بنجاح', teacher });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// جلب الطلاب المعلقين بانتظار الموافقة
+app.get('/api/teacher/pending-students', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const students = await db.getPendingStudents();
+    res.json({ students });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ في جلب بيانات الطلاب المعلقين' });
+  }
+});
+
+// الموافقة على طالب
+app.post('/api/teacher/approve-student', authenticateToken, requireTeacher, async (req, res) => {
+  const { studentId } = req.body;
+
+  if (!studentId) {
+    return res.status(400).json({ error: 'معرف الطالب مطلوب' });
+  }
+
+  try {
+    const student = await db.approveStudent(studentId, req.user.id);
+    res.json({ message: `تمت الموافقة على الطالب "${student.fullName}" بنجاح!`, student });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// رفض طالب
+app.post('/api/teacher/reject-student', authenticateToken, requireTeacher, async (req, res) => {
+  const { studentId } = req.body;
+
+  if (!studentId) {
+    return res.status(400).json({ error: 'معرف الطالب مطلوب' });
+  }
+
+  try {
+    await db.rejectStudent(studentId);
+    res.json({ message: 'تم رفض الطالب وحذف حسابه.' });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
 
 // Get Students of Teacher
 app.get('/api/teacher/students', authenticateToken, requireTeacher, async (req, res) => {
@@ -116,7 +175,7 @@ app.get('/api/teacher/students', authenticateToken, requireTeacher, async (req, 
   }
 });
 
-// Create Student Account by Teacher
+// Create Student Account by Teacher (معتمد مباشرة)
 app.post('/api/teacher/students', authenticateToken, requireTeacher, async (req, res) => {
   const { fullName, username, password } = req.body;
 
@@ -174,12 +233,11 @@ app.get('/api/teacher/submissions', authenticateToken, requireTeacher, async (re
 app.get('/api/student/assignment/today', authenticateToken, requireStudent, async (req, res) => {
   try {
     const assignment = await db.getAssignmentForStudentToday(req.user.id);
-    
+
     if (!assignment) {
       return res.json({ assignment: null, submission: null });
     }
 
-    // Check if student already submitted progress for today's assignment
     const submissions = await db.getSubmissionsForStudent(req.user.id);
     const todaySubmission = submissions.find(s => s.assignmentId === assignment.id) || null;
 
@@ -195,7 +253,6 @@ app.get('/api/student/assignments/history', authenticateToken, requireStudent, a
     const assignments = await db.getAssignmentsHistoryForStudent(req.user.id);
     const submissions = await db.getSubmissionsForStudent(req.user.id);
 
-    // Map assignments with their submission status
     const history = assignments.map(a => {
       const sub = submissions.find(s => s.assignmentId === a.id);
       return {

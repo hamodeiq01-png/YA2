@@ -14,8 +14,76 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 // --- USER OPERATIONS ---
 
+// تسجيل طالب جديد (بانتظار موافقة المعلم)
+async function registerStudent(fullName, username, password) {
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('username', username)
+    .single();
+
+  if (existingUser) {
+    throw new Error('اسم المستخدم موجود بالفعل');
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const hashedPassword = bcrypt.hashSync(password, salt);
+
+  const { data, error } = await supabase
+    .from('users')
+    .insert([{
+      full_name: fullName,
+      username: username.toLowerCase(),
+      password: hashedPassword,
+      role: 'student',
+      teacher_id: null,
+      is_approved: false
+    }])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  const { password: _, ...userWithoutPassword } = data;
+  return mapUserKeys(userWithoutPassword);
+}
+
+// إنشاء حساب معلم بواسطة معلم آخر
+async function createTeacher(fullName, username, password) {
+  const { data: existingUser } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('username', username)
+    .single();
+
+  if (existingUser) {
+    throw new Error('اسم المستخدم موجود بالفعل');
+  }
+
+  const salt = bcrypt.genSaltSync(10);
+  const hashedPassword = bcrypt.hashSync(password, salt);
+
+  const { data, error } = await supabase
+    .from('users')
+    .insert([{
+      full_name: fullName,
+      username: username.toLowerCase(),
+      password: hashedPassword,
+      role: 'teacher',
+      teacher_id: null,
+      is_approved: true
+    }])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  const { password: _, ...userWithoutPassword } = data;
+  return mapUserKeys(userWithoutPassword);
+}
+
+// إنشاء حساب طالب بواسطة المعلم (معتمد مباشرة)
 async function createUser(fullName, username, password, role, teacherId = null) {
-  // Check if username already exists
   const { data: existingUser } = await supabase
     .from('users')
     .select('id')
@@ -36,16 +104,14 @@ async function createUser(fullName, username, password, role, teacherId = null) 
       username: username.toLowerCase(),
       password: hashedPassword,
       role: role,
-      teacher_id: teacherId
+      teacher_id: teacherId,
+      is_approved: true
     }])
     .select()
     .single();
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
 
-  // Return user without password
   const { password: _, ...userWithoutPassword } = data;
   return mapUserKeys(userWithoutPassword);
 }
@@ -62,6 +128,11 @@ async function authenticateUser(username, password) {
   const isValid = bcrypt.compareSync(password, user.password);
   if (!isValid) return null;
 
+  // التحقق من حالة الموافقة للطلاب
+  if (user.role === 'student' && !user.is_approved) {
+    throw new Error('حسابك بانتظار موافقة المعلم. يرجى التواصل مع معلمك.');
+  }
+
   const { password: _, ...userWithoutPassword } = user;
   return mapUserKeys(userWithoutPassword);
 }
@@ -71,10 +142,53 @@ async function getStudentsForTeacher(teacherId) {
     .from('users')
     .select('*')
     .eq('role', 'student')
-    .eq('teacher_id', teacherId);
+    .eq('teacher_id', teacherId)
+    .eq('is_approved', true);
 
   if (error) return [];
   return students.map(({ password, ...user }) => mapUserKeys(user));
+}
+
+// جلب الطلاب المعلقين بانتظار الموافقة
+async function getPendingStudents() {
+  const { data: students, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('role', 'student')
+    .eq('is_approved', false)
+    .order('created_at', { ascending: false });
+
+  if (error) return [];
+  return students.map(({ password, ...user }) => mapUserKeys(user));
+}
+
+// موافقة المعلم على طالب وربطه به
+async function approveStudent(studentId, teacherId) {
+  const { data, error } = await supabase
+    .from('users')
+    .update({ is_approved: true, teacher_id: teacherId })
+    .eq('id', studentId)
+    .eq('is_approved', false)
+    .select()
+    .single();
+
+  if (error) throw new Error('حدث خطأ أثناء الموافقة على الطالب');
+  if (!data) throw new Error('الطالب غير موجود أو تمت الموافقة عليه مسبقاً');
+
+  const { password: _, ...userWithoutPassword } = data;
+  return mapUserKeys(userWithoutPassword);
+}
+
+// رفض طالب (حذف الحساب)
+async function rejectStudent(studentId) {
+  const { error } = await supabase
+    .from('users')
+    .delete()
+    .eq('id', studentId)
+    .eq('is_approved', false);
+
+  if (error) throw new Error('حدث خطأ أثناء رفض الطالب');
+  return true;
 }
 
 // --- ASSIGNMENT OPERATIONS ---
@@ -92,9 +206,7 @@ async function createAssignment(teacherId, bookName, startPage, endPage, targetD
     .select()
     .single();
 
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
   return mapAssignmentKeys(data);
 }
 
@@ -110,7 +222,6 @@ async function getAssignmentsForTeacher(teacherId) {
 }
 
 async function getAssignmentForStudentToday(studentId) {
-  // First get the student's teacher
   const { data: student } = await supabase
     .from('users')
     .select('teacher_id')
@@ -119,7 +230,7 @@ async function getAssignmentForStudentToday(studentId) {
 
   if (!student || !student.teacher_id) return null;
 
-  const todayStr = new Date().toLocaleDateString('sv'); // YYYY-MM-DD
+  const todayStr = new Date().toLocaleDateString('sv');
 
   const { data: assignment, error } = await supabase
     .from('assignments')
@@ -154,7 +265,6 @@ async function getAssignmentsHistoryForStudent(studentId) {
 // --- SUBMISSION OPERATIONS ---
 
 async function submitProgress(studentId, assignmentId, isCompleted, questions = '', freeSpace = '') {
-  // Check if already submitted
   const { data: existingSubmission } = await supabase
     .from('submissions')
     .select('id')
@@ -165,7 +275,6 @@ async function submitProgress(studentId, assignmentId, isCompleted, questions = 
   let submissionData;
 
   if (existingSubmission) {
-    // Update
     const { data, error } = await supabase
       .from('submissions')
       .update({
@@ -181,7 +290,6 @@ async function submitProgress(studentId, assignmentId, isCompleted, questions = 
     if (error) throw new Error(error.message);
     submissionData = data;
   } else {
-    // Insert
     const { data, error } = await supabase
       .from('submissions')
       .insert([{
@@ -202,18 +310,15 @@ async function submitProgress(studentId, assignmentId, isCompleted, questions = 
 }
 
 async function getSubmissionsForTeacherDashboard(teacherId) {
-  // Get all assignments for this teacher
   const { data: assignments, error: err1 } = await supabase
     .from('assignments')
     .select('id, book_name, start_page, end_page, target_date')
     .eq('teacher_id', teacherId);
 
-  if (err1 || !assignments.length) return [];
-  
+  if (err1 || !assignments || !assignments.length) return [];
+
   const assignmentIds = assignments.map(a => a.id);
 
-  // Get submissions for these assignments
-  // Also join with users to get student name
   const { data: submissions, error: err2 } = await supabase
     .from('submissions')
     .select(`
@@ -262,6 +367,7 @@ function mapUserKeys(user) {
     username: user.username,
     role: user.role,
     teacherId: user.teacher_id,
+    isApproved: user.is_approved,
     createdAt: user.created_at
   };
 }
@@ -293,9 +399,14 @@ function mapSubmissionKeys(sub) {
 }
 
 module.exports = {
+  registerStudent,
+  createTeacher,
   createUser,
   authenticateUser,
   getStudentsForTeacher,
+  getPendingStudents,
+  approveStudent,
+  rejectStudent,
   createAssignment,
   getAssignmentsForTeacher,
   getAssignmentForStudentToday,

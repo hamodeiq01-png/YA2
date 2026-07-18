@@ -27,6 +27,14 @@
   <main class="container">
     <div id="teacherAlert" class="alert"></div>
 
+    <!-- قسم الطلاب المعلقين بانتظار الموافقة -->
+    <div class="card" id="pendingStudentsCard" style="margin-bottom: 24px; display: none;">
+      <h3 class="card-title">🔔 طلاب بانتظار الموافقة</h3>
+      <div id="pendingStudentsList" class="pending-list">
+        <!-- يتم تعبئتها ديناميكياً -->
+      </div>
+    </div>
+
     <div class="dashboard-grid">
       <!-- Sidebar Actions -->
       <aside>
@@ -75,6 +83,26 @@
             <button type="submit" class="btn btn-secondary">إنشاء الحساب</button>
           </form>
         </div>
+
+        <!-- إنشاء حساب معلم جديد -->
+        <div class="card">
+          <h3 class="card-title">إنشاء حساب معلم جديد 🎓</h3>
+          <form id="teacherForm" onsubmit="handleCreateTeacher(event)">
+            <div class="form-group">
+              <label for="newTeacherFullName">اسم المعلم الكامل</label>
+              <input type="text" id="newTeacherFullName" class="form-control" placeholder="مثال: أ. محمد أحمد" required autocomplete="name">
+            </div>
+            <div class="form-group">
+              <label for="newTeacherUsername">اسم المستخدم</label>
+              <input type="text" id="newTeacherUsername" class="form-control" placeholder="اختر اسم مستخدم فريد" required autocomplete="username">
+            </div>
+            <div class="form-group">
+              <label for="newTeacherPassword">كلمة المرور</label>
+              <input type="password" id="newTeacherPassword" class="form-control" placeholder="اختر كلمة مرور قوية" required autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn btn-secondary">إنشاء حساب المعلم</button>
+          </form>
+        </div>
       </aside>
 
       <!-- Main Contents -->
@@ -82,17 +110,23 @@
         <!-- Stats summary -->
         <div class="card" style="padding: 20px;">
           <h3 style="margin-bottom: 10px;">نظرة عامة على المجموعة 📊</h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
             <div class="student-list-item" style="border-right-color: var(--primary);">
               <div>
                 <div class="name" style="font-size: 1.5rem;" id="statTotalStudents">0</div>
-                <div class="username">إجمالي الطلاب المسجلين</div>
+                <div class="username">طلابي المسجلين</div>
               </div>
             </div>
             <div class="student-list-item" style="border-right-color: var(--accent);">
               <div>
                 <div class="name" style="font-size: 1.5rem;" id="statTotalSubmissions">0</div>
-                <div class="username">إجمالي إنجازات القراءة المستلمة</div>
+                <div class="username">إنجازات القراءة</div>
+              </div>
+            </div>
+            <div class="student-list-item" style="border-right-color: #f59e0b;">
+              <div>
+                <div class="name" style="font-size: 1.5rem;" id="statPendingStudents">0</div>
+                <div class="username">بانتظار الموافقة</div>
               </div>
             </div>
           </div>
