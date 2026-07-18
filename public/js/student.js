@@ -16,92 +16,138 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadStudentDashboard() {
-  loadTodayAssignment();
+  loadTodayAssignments();
   loadHistory();
 }
 
-async function loadTodayAssignment() {
-  const detailsEl = document.getElementById('assignmentDetails');
-  const submissionCard = document.getElementById('submissionCard');
+async function loadTodayAssignments() {
+  const container = document.getElementById('assignmentsContainer');
 
   try {
-    const response = await fetch(`${API_BASE}/student/assignment/today`, {
+    const response = await fetch(`${API_BASE}/student/assignments/today`, {
       headers: getAuthHeaders()
     });
     const data = await response.json();
 
     if (response.ok) {
-      if (!data.assignment) {
-        detailsEl.innerHTML = `
+      if (!data.assignments || data.assignments.length === 0) {
+        container.innerHTML = `
           <div class="empty-state">
             <div class="empty-state-icon">🌸</div>
             <p style="font-weight: 700; font-size: 1.1rem; color: var(--primary);">لا يوجد ورد قراءة مجدول لك اليوم.</p>
             <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 5px;">استرح اليوم، أو اقرأ قراءة حرة مفيدة!</p>
           </div>`;
-        submissionCard.style.display = 'none';
         return;
       }
 
-      const assign = data.assignment;
-      document.getElementById('assignmentId').value = assign.id;
+      container.innerHTML = data.assignments.map((item, index) => {
+        const assign = item.assignment;
+        const sub = item.submission;
 
-      let contentHtml = `
-        <div style="padding: 10px 0;">
-          <div style="font-size: 1.4rem; font-weight: 800; color: var(--primary); margin-bottom: 10px;">
-            📖 كتاب: ${escapeHtml(assign.bookName)}
-          </div>
-          <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 15px;">
-            <div style="font-size: 1.1rem; font-weight: 700; color: var(--accent);">
-              صفحات الورد: من ${assign.startPage} إلى ${assign.endPage}
+        let html = `
+          <div class="assignment-block" style="padding: 16px; background: var(--surface); border-radius: 12px; margin-bottom: 16px; border-right: 4px solid var(--primary);">
+            <div style="font-size: 1.2rem; font-weight: 800; color: var(--primary); margin-bottom: 8px;">
+              📖 كتاب: ${escapeHtml(assign.bookName)}
             </div>
-            <div class="user-badge" style="background-color: var(--primary-glow);">
-              مجدول لتاريخ: ${assign.targetDate}
-            </div>
-          </div>
-        </div>`;
+            <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
+              <div style="font-size: 1rem; font-weight: 700; color: var(--accent);">
+                صفحات الورد: من ${assign.startPage} إلى ${assign.endPage}
+              </div>
+              <span class="user-badge" style="background-color: var(--primary-glow);">
+                مجدول لتاريخ: ${assign.targetDate}
+              </span>
+            </div>`;
 
-      // Check if student already submitted progress for today
-      if (data.submission) {
-        submissionCard.style.display = 'none';
-        
-        let subDetails = '';
-        if (data.submission.questions) {
-          subDetails += `
-            <div class="detail-box">
-              <div class="detail-box-title">❓ سؤالك المرسل:</div>
-              <div>${escapeHtml(data.submission.questions)}</div>
+        if (sub) {
+          // Already submitted
+          let subDetails = '';
+          if (sub.questions) {
+            subDetails += `
+              <div class="detail-box">
+                <div class="detail-box-title">❓ سؤالك المرسل:</div>
+                <div>${escapeHtml(sub.questions)}</div>
+              </div>`;
+          }
+          if (sub.freeSpace) {
+            subDetails += `
+              <div class="detail-box">
+                <div class="detail-box-title">📝 مساحتك الحرة / تلخيصك:</div>
+                <div>${escapeHtml(sub.freeSpace)}</div>
+              </div>`;
+          }
+
+          html += `
+            <div style="background-color: rgba(16, 185, 129, 0.08); border: 1.5px solid var(--success); border-radius: 8px; padding: 16px; margin-top: 8px;">
+              <h4 style="color: var(--success); font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                ✓ تم إرسال إنجاز هذا الورد بنجاح!
+              </h4>
+              <p style="font-size: 0.9rem; color: var(--text-main);">لقد أرسلت إنجازك للمعلم، بارك الله في همتك.</p>
+              ${subDetails}
+            </div>`;
+        } else {
+          // Show submission form
+          html += `
+            <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px;">
+              <h4 style="font-weight: 700; margin-bottom: 10px; color: var(--text-primary);">✍️ تسجيل إنجازك</h4>
+              <form onsubmit="handleSubmitProgress(event, '${assign.id}', ${index})">
+                <div class="form-group">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="isCompleted_${index}">
+                    <span>أؤكد أنني قرأت هذا الورد كاملاً وبتركيز.</span>
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label>هل لديك أسئلة حول ما قرأت؟ (اختياري)</label>
+                  <textarea id="questions_${index}" class="form-control" placeholder="اكتب سؤالك هنا..."></textarea>
+                </div>
+                <div class="form-group">
+                  <label>مساحة حرة (تلخيص، خواطر) (اختياري)</label>
+                  <textarea id="freeSpace_${index}" class="form-control" placeholder="اكتب ما يجول في خاطرك..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">إرسال الإنجاز للمعلم</button>
+              </form>
             </div>`;
         }
-        if (data.submission.freeSpace) {
-          subDetails += `
-            <div class="detail-box">
-              <div class="detail-box-title">📝 مساحتك الحرة / تلخيصك:</div>
-              <div>${escapeHtml(data.submission.freeSpace)}</div>
-            </div>`;
-        }
 
-        contentHtml += `
-          <div style="background-color: rgba(16, 185, 129, 0.08); border: 1.5px solid var(--success); border-radius: 8px; padding: 20px; margin-top: 15px;">
-            <h4 style="color: var(--success); font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-              ✓ تم إرسال إنجاز الورد بنجاح!
-            </h4>
-            <p style="font-size: 0.95rem; color: var(--text-main);">لقد أرسلت إنجازك للمعلم، بارك الله في همتك ونفع بك.</p>
-            ${subDetails}
-          </div>`;
-      } else {
-        // Show submission form
-        submissionCard.style.display = 'block';
-      }
-
-      detailsEl.innerHTML = contentHtml;
+        html += '</div>';
+        return html;
+      }).join('');
     }
   } catch (error) {
-    console.error('Error loading today\'s assignment:', error);
-    detailsEl.innerHTML = `
+    console.error('Error loading today\'s assignments:', error);
+    container.innerHTML = `
       <div class="empty-state">
         <div class="empty-state-icon">⚠️</div>
-        حدث خطأ أثناء تحميل تكليف اليوم. يرجى إعادة تحميل الصفحة.
+        حدث خطأ أثناء تحميل أوراد اليوم. يرجى إعادة تحميل الصفحة.
       </div>`;
+  }
+}
+
+async function handleSubmitProgress(e, assignmentId, index) {
+  e.preventDefault();
+  const isCompleted = document.getElementById(`isCompleted_${index}`).checked;
+  const questions = document.getElementById(`questions_${index}`).value;
+  const freeSpace = document.getElementById(`freeSpace_${index}`).value;
+
+  if (!isCompleted) {
+    showAlert('studentAlert', 'يرجى تأكيد أنك قرأت الورد أولاً بوضع علامة ✓', 'danger');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/student/submit`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ assignmentId, isCompleted, questions, freeSpace })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('studentAlert', 'تم تسجيل وإرسال إنجازك بنجاح. هنيئاً لك!', 'success');
+    loadStudentDashboard();
+  } catch (error) {
+    showAlert('studentAlert', error.message, 'danger');
   }
 }
 
@@ -146,31 +192,6 @@ async function loadHistory() {
     }
   } catch (error) {
     console.error('Error loading student history:', error);
-  }
-}
-
-async function handleSubmitProgress(e) {
-  e.preventDefault();
-  const assignmentId = document.getElementById('assignmentId').value;
-  const isCompleted = document.getElementById('isCompleted').checked;
-  const questions = document.getElementById('questions').value;
-  const freeSpace = document.getElementById('freeSpace').value;
-
-  try {
-    const response = await fetch(`${API_BASE}/student/submit`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ assignmentId, isCompleted, questions, freeSpace })
-    });
-
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error);
-
-    showAlert('studentAlert', 'تم تسجيل وإرسال إنجازك بنجاح. هنيئاً لك!', 'success');
-    document.getElementById('submissionForm').reset();
-    loadStudentDashboard();
-  } catch (error) {
-    showAlert('studentAlert', error.message, 'danger');
   }
 }
 

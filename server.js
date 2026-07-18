@@ -229,21 +229,26 @@ app.get('/api/teacher/submissions', authenticateToken, requireTeacher, async (re
 
 // --- STUDENT APIS ---
 
-// Get Today's Assignment for Student
-app.get('/api/student/assignment/today', authenticateToken, requireStudent, async (req, res) => {
+// Get Today's Assignments for Student (supports multiple)
+app.get('/api/student/assignments/today', authenticateToken, requireStudent, async (req, res) => {
   try {
-    const assignment = await db.getAssignmentForStudentToday(req.user.id);
+    const assignments = await db.getAssignmentsForStudentToday(req.user.id);
 
-    if (!assignment) {
-      return res.json({ assignment: null, submission: null });
+    if (!assignments || assignments.length === 0) {
+      return res.json({ assignments: [] });
     }
 
     const submissions = await db.getSubmissionsForStudent(req.user.id);
-    const todaySubmission = submissions.find(s => s.assignmentId === assignment.id) || null;
 
-    res.json({ assignment, submission: todaySubmission });
+    // Map each assignment with its submission
+    const result = assignments.map(a => {
+      const sub = submissions.find(s => s.assignmentId === a.id) || null;
+      return { assignment: a, submission: sub };
+    });
+
+    res.json({ assignments: result });
   } catch (error) {
-    res.status(500).json({ error: 'حدث خطأ في جلب الورد اليومي' });
+    res.status(500).json({ error: 'حدث خطأ في جلب أوراد اليوم' });
   }
 });
 

@@ -221,26 +221,26 @@ async function getAssignmentsForTeacher(teacherId) {
   return assignments.map(mapAssignmentKeys);
 }
 
-async function getAssignmentForStudentToday(studentId) {
+async function getAssignmentsForStudentToday(studentId) {
   const { data: student } = await supabase
     .from('users')
     .select('teacher_id')
     .eq('id', studentId)
     .single();
 
-  if (!student || !student.teacher_id) return null;
+  if (!student || !student.teacher_id) return [];
 
   const todayStr = new Date().toLocaleDateString('sv');
 
-  const { data: assignment, error } = await supabase
+  const { data: assignments, error } = await supabase
     .from('assignments')
     .select('*')
     .eq('teacher_id', student.teacher_id)
     .eq('target_date', todayStr)
-    .single();
+    .order('created_at', { ascending: true });
 
-  if (error || !assignment) return null;
-  return mapAssignmentKeys(assignment);
+  if (error || !assignments) return [];
+  return assignments.map(mapAssignmentKeys);
 }
 
 async function getAssignmentsHistoryForStudent(studentId) {
@@ -409,7 +409,7 @@ module.exports = {
   rejectStudent,
   createAssignment,
   getAssignmentsForTeacher,
-  getAssignmentForStudentToday,
+  getAssignmentsForStudentToday,
   getAssignmentsHistoryForStudent,
   submitProgress,
   getSubmissionsForTeacherDashboard,
