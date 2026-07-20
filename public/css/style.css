@@ -1047,6 +1047,145 @@ tr:hover {
   animation: countUp 0.4s ease forwards;
 }
 
+/* ====== EXPORT MODE - تخطيط عريض أفقي للتصدير كصورة ====== */
+.export-mode {
+  width: 1100px !important;
+  min-width: 1100px !important;
+  padding: 32px !important;
+  background: #FFFFFF !important;
+  border-radius: 0 !important;
+  font-family: 'Tajawal', sans-serif;
+  direction: rtl;
+}
+
+/* Header في وضع التصدير */
+.export-mode .stats-header {
+  padding: 24px 30px;
+  border-radius: 14px;
+  margin-bottom: 28px;
+  background: linear-gradient(135deg, #1C3D2F 0%, #2A5A45 60%, #1C3D2F 100%) !important;
+}
+
+.export-mode .stats-header h3 {
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+}
+
+.export-mode .stats-header p {
+  font-size: 0.95rem;
+}
+
+/* بطاقات الإحصائيات - 6 في صف واحد */
+.export-mode .stats-summary-grid {
+  grid-template-columns: repeat(6, 1fr) !important;
+  gap: 14px !important;
+  margin-bottom: 28px !important;
+}
+
+.export-mode .stat-card {
+  padding: 18px 12px !important;
+  border-radius: 14px !important;
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.export-mode .stat-card-icon {
+  width: 42px;
+  height: 42px;
+  font-size: 1.2rem;
+  margin-bottom: 10px;
+}
+
+.export-mode .stat-value {
+  font-size: 2rem !important;
+  animation: none !important;
+}
+
+.export-mode .stat-label {
+  font-size: 0.78rem !important;
+  margin-top: 4px;
+}
+
+/* حلقة الإنجاز - أفقي مع تفاصيل */
+.export-mode .completion-ring-container {
+  flex-direction: row !important;
+  padding: 22px 28px !important;
+  gap: 30px !important;
+  margin-bottom: 28px !important;
+  border-radius: 14px !important;
+}
+
+.export-mode .completion-ring {
+  width: 110px !important;
+  height: 110px !important;
+  flex-shrink: 0 !important;
+}
+
+.export-mode .completion-ring-value .percentage {
+  font-size: 1.6rem !important;
+}
+
+.export-mode .completion-details {
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 16px 30px !important;
+  align-items: center;
+}
+
+.export-mode .completion-detail-item {
+  font-size: 0.95rem !important;
+}
+
+/* ترتيب الطلاب - شبكة أفقية */
+.export-mode .leaderboard-section {
+  margin-top: 4px !important;
+}
+
+.export-mode .leaderboard-title {
+  margin-bottom: 14px !important;
+  font-size: 1.15rem !important;
+}
+
+.export-mode .leaderboard-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 10px !important;
+}
+
+.export-mode .leaderboard-item {
+  padding: 12px 16px !important;
+  border-radius: 12px !important;
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.export-mode .leaderboard-rank {
+  width: 36px !important;
+  height: 36px !important;
+  font-size: 1rem !important;
+  border-radius: 10px !important;
+}
+
+.export-mode .leaderboard-name {
+  font-size: 0.95rem !important;
+}
+
+.export-mode .leaderboard-meta {
+  font-size: 0.75rem !important;
+  gap: 10px !important;
+}
+
+.export-mode .leaderboard-points {
+  font-size: 0.85rem !important;
+  padding: 5px 12px !important;
+}
+
+.export-mode .leaderboard-progress {
+  height: 3px !important;
+}
+
 /* ====== MISSED ASSIGNMENT STYLES ====== */
 .badge-missed {
   background-color: rgba(239, 68, 68, 0.1);

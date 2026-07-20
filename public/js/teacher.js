@@ -465,15 +465,27 @@ async function downloadStatsAsImage() {
   }
 
   try {
+    // إضافة وضع التصدير للتخطيط العريض
+    el.classList.add('export-mode');
+
+    // انتظار قليلاً لتطبيق الأنماط
+    await new Promise(r => setTimeout(r, 100));
+
     const canvas = await html2canvas(el, {
       backgroundColor: '#FFFFFF',
       scale: 2,
       useCORS: true,
-      logging: false
+      logging: false,
+      width: el.scrollWidth,
+      height: el.scrollHeight
     });
 
+    // إزالة وضع التصدير
+    el.classList.remove('export-mode');
+
     const link = document.createElement('a');
-    const filterLabel = currentStatsFilter === 'today' ? 'يومية' : 'شاملة';
+    const filterLabels = { today: 'يومية', week: 'أسبوعية', all: 'شاملة' };
+    const filterLabel = filterLabels[currentStatsFilter] || 'شاملة';
     const dateStr = new Date().toLocaleDateString('sv');
     link.download = `إحصائيات_اقرأ_${filterLabel}_${dateStr}.png`;
     link.href = canvas.toDataURL('image/png');
@@ -481,6 +493,8 @@ async function downloadStatsAsImage() {
 
     showAlert('teacherAlert', 'تم تحميل الصورة بنجاح!', 'success');
   } catch (error) {
+    // إزالة وضع التصدير حتى لو حصل خطأ
+    el.classList.remove('export-mode');
     showAlert('teacherAlert', 'حدث خطأ أثناء تحميل الصورة', 'danger');
     console.error('Error downloading stats image:', error);
   }
