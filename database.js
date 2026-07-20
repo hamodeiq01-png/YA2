@@ -227,21 +227,24 @@ async function getAssignmentsForTeacher(teacherId) {
 
 async function getAssignmentsForStudentToday(studentId) {
   const todayStr = new Date().toLocaleDateString('sv');
-  // حساب تاريخ أمس للسماح بالتسليم المتأخر (يومين مهلة)
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  const yesterdayStr = yesterday.toLocaleDateString('sv');
+  // حساب تواريخ الأيام السبعة الماضية للسماح بالإنجاز المتأخر
+  const dates = [todayStr];
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    dates.push(d.toLocaleDateString('sv'));
+  }
 
-  // جلب أوراد اليوم وأمس (مهلة يومين)
+  // جلب أوراد اليوم والأيام السبعة الماضية
   const { data: assignments, error } = await supabase
     .from('assignments')
     .select('*')
-    .in('target_date', [todayStr, yesterdayStr])
+    .in('target_date', dates)
     .order('target_date', { ascending: false });
 
   if (error || !assignments) return [];
 
-  // فلترة: أوراد أمس فقط إذا لم يسلمها الطالب بعد
+  // فلترة: أوراد اليوم تظهر دائماً، الأوراد السابقة فقط إذا لم يسلمها
   const { data: existingSubs } = await supabase
     .from('submissions')
     .select('assignment_id')
@@ -252,8 +255,8 @@ async function getAssignmentsForStudentToday(studentId) {
   const filtered = assignments.filter(a => {
     // أوراد اليوم تظهر دائماً
     if (a.target_date === todayStr) return true;
-    // أوراد أمس تظهر فقط إذا لم يسلمها
-    if (a.target_date === yesterdayStr && !submittedIds.includes(a.id)) return true;
+    // الأوراد السابقة تظهر فقط إذا لم يسلمها
+    if (!submittedIds.includes(a.id)) return true;
     return false;
   });
 
@@ -290,9 +293,9 @@ async function submitProgress(studentId, assignmentId, isCompleted, questions = 
   const target = new Date(targetDate);
   const diffDays = Math.floor((today - target) / (1000 * 60 * 60 * 24));
 
-  // التحقق من المهلة (يومين فقط)
-  if (diffDays > 1) {
-    throw new Error('انتهت مهلة تسليم هذا الورد (يومين فقط)');
+  // التحقق من المهلة (أسبوع كحد أقصى)
+  if (diffDays > 7) {
+    throw new Error('انتهت مهلة تسليم هذا الورد (أسبوع كحد أقصى)');
   }
 
   // حساب النقاط
@@ -305,8 +308,12 @@ async function submitProgress(studentId, assignmentId, isCompleted, questions = 
       pointsToAward = 10;
       isLate = false;
     } else if (diffDays === 1) {
-      // اليوم الثاني (متأخر)
+      // اليوم الثاني (متأخر - 5 نقاط)
       pointsToAward = 5;
+      isLate = true;
+    } else {
+      // بعد يومين (فائت - بدون نقاط)
+      pointsToAward = 0;
       isLate = true;
     }
   }
@@ -501,6 +508,12 @@ async function getStatistics(dateFilter = 'all') {
   if (dateFilter === 'today') {
     const todayStr = new Date().toLocaleDateString('sv');
     assignmentsQuery = assignmentsQuery.eq('target_date', todayStr);
+  } else if (dateFilter === 'week') {
+    const todayStr = new Date().toLocaleDateString('sv');
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toLocaleDateString('sv');
+    assignmentsQuery = assignmentsQuery.gte('target_date', weekAgoStr).lte('target_date', todayStr);
   }
   const { data: assignments } = await assignmentsQuery.order('target_date', { ascending: false });
 

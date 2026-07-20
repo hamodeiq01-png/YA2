@@ -93,12 +93,42 @@ async function loadTodayAssignments() {
         const assign = item.assignment;
         const sub = item.submission;
 
-        // تحديد إذا كان الورد متأخراً
+        // حساب الفرق بالأيام
         const todayStr = new Date().toLocaleDateString('sv');
-        const isLateAssignment = assign.targetDate < todayStr;
+        const today = new Date(todayStr);
+        const target = new Date(assign.targetDate);
+        const diffDays = Math.floor((today - target) / (1000 * 60 * 60 * 24));
+
+        // تحديد نوع الورد
+        let assignType = 'today'; // اليوم
+        let borderColor = 'var(--primary)';
+        let pointsBadge = '<span class="badge badge-success">✨ 10 نقاط عند الإنجاز</span>';
+
+        if (diffDays === 1) {
+          assignType = 'late';
+          borderColor = '#f59e0b';
+          pointsBadge = '<span class="badge badge-warning">⏰ تسليم متأخر (5 نقاط بدلاً من 10)</span>';
+        } else if (diffDays >= 2) {
+          assignType = 'missed';
+          borderColor = '#ef4444';
+          pointsBadge = '<span class="badge badge-missed">📛 ورد فائت - بدون نقاط</span>';
+        }
 
         let html = `
-          <div class="assignment-block" style="padding: 16px; background: var(--surface); border-radius: 12px; margin-bottom: 16px; border-right: 4px solid ${isLateAssignment ? '#f59e0b' : 'var(--primary)'};">
+          <div class="assignment-block ${assignType === 'missed' ? 'assignment-missed' : ''}" style="padding: 16px; background: var(--surface); border-radius: 12px; margin-bottom: 16px; border-right: 4px solid ${borderColor};">`;
+
+        // تنبيه خاص للأوراد الفائتة
+        if (assignType === 'missed' && !sub) {
+          html += `
+            <div class="missed-alert">
+              <div class="missed-alert-icon">📛</div>
+              <div class="missed-alert-text">
+                <strong>ورد فائت</strong> - يمكنك إنجازه لكن بدون نقاط
+              </div>
+            </div>`;
+        }
+
+        html += `
             <div style="font-size: 1.2rem; font-weight: 800; color: var(--primary); margin-bottom: 8px;">
               📖 كتاب: ${escapeHtml(assign.bookName)}
             </div>
@@ -109,7 +139,7 @@ async function loadTodayAssignments() {
               <span class="user-badge" style="background-color: var(--primary-glow);">
                 مجدول لتاريخ: ${assign.targetDate}
               </span>
-              ${isLateAssignment ? '<span class="badge badge-warning">⏰ تسليم متأخر (5 نقاط بدلاً من 10)</span>' : '<span class="badge badge-success">✨ 10 نقاط عند الإنجاز</span>'}
+              ${pointsBadge}
             </div>`;
 
         if (sub) {
@@ -137,13 +167,20 @@ async function loadTodayAssignments() {
               </h4>
               <p style="font-size: 0.9rem; color: var(--text-main);">
                 لقد أرسلت إنجازك للمعلم، بارك الله في همتك.
-                ${sub.pointsAwarded > 0 ? `<span class="points-badge" style="margin-right: 8px;">+${sub.pointsAwarded} ⭐</span>` : ''}
+                ${sub.pointsAwarded > 0 ? `<span class="points-badge" style="margin-right: 8px;">+${sub.pointsAwarded} ⭐</span>` : '<span class="badge badge-missed" style="margin-right: 8px;">بدون نقاط</span>'}
                 ${sub.isLate ? '<span class="badge badge-warning" style="margin-right: 4px;">متأخر</span>' : ''}
               </p>
               ${subDetails}
             </div>`;
         } else {
           // Show submission form
+          const submitBtnText = assignType === 'missed'
+            ? 'إرسال الإنجاز (بدون نقاط)'
+            : 'إرسال الإنجاز للمعلم';
+          const submitBtnStyle = assignType === 'missed'
+            ? 'style="background: linear-gradient(135deg, #6B7280, #9CA3AF);"'
+            : '';
+
           html += `
             <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px;">
               <h4 style="font-weight: 700; margin-bottom: 10px; color: var(--text-primary);">✍️ تسجيل إنجازك</h4>
@@ -162,7 +199,7 @@ async function loadTodayAssignments() {
                   <label>مساحة حرة (تلخيص، خواطر) (اختياري)</label>
                   <textarea id="freeSpace_${index}" class="form-control" placeholder="اكتب ما يجول في خاطرك..."></textarea>
                 </div>
-                <button type="submit" class="btn btn-primary">إرسال الإنجاز للمعلم</button>
+                <button type="submit" class="btn btn-primary" ${submitBtnStyle}>${submitBtnText}</button>
               </form>
             </div>`;
         }

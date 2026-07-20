@@ -282,6 +282,7 @@ async function loadStatistics(filter = 'all') {
 
   // تحديث أزرار الفلتر
   document.getElementById('statFilterToday').classList.toggle('active', filter === 'today');
+  document.getElementById('statFilterWeek').classList.toggle('active', filter === 'week');
   document.getElementById('statFilterAll').classList.toggle('active', filter === 'all');
 
   const contentEl = document.getElementById('statisticsContent');
@@ -297,80 +298,153 @@ async function loadStatistics(filter = 'all') {
 
     const stats = data.statistics;
     const summary = stats.summary;
-    const filterLabel = filter === 'today' ? 'إحصائيات اليوم' : 'إحصائيات شاملة';
+    const filterLabels = { today: 'إحصائيات اليوم', week: 'إحصائيات الأسبوع', all: 'إحصائيات شاملة' };
+    const filterLabel = filterLabels[filter] || 'إحصائيات شاملة';
+
+    // حسابات إضافية
+    const avgPoints = summary.totalStudents > 0
+      ? Math.round(summary.totalPointsAwarded / summary.totalStudents)
+      : 0;
+    const expectedSubmissions = summary.totalStudents * summary.totalAssignments;
+    const absentCount = expectedSubmissions - summary.totalSubmissions;
+    const absenceRate = expectedSubmissions > 0
+      ? Math.round((absentCount / expectedSubmissions) * 100)
+      : 0;
+    const onTimeSubmissions = summary.completedSubmissions - summary.lateSubmissions;
+    const completionPercent = summary.completionRate;
+
+    // حساب dashoffset للحلقة (314 = 2πr = 2 * π * 50)
+    const circumference = 314;
+    const dashOffset = circumference - (circumference * completionPercent / 100);
 
     let html = `
-      <div id="statsExportArea" style="padding: 16px; background: var(--card-bg);">
-        <div style="text-align: center; margin-bottom: 16px;">
-          <h3 style="color: var(--primary); margin-bottom: 4px;">📊 ${filterLabel} - منصة اقرأ</h3>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">${new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+      <div id="statsExportArea" style="padding: 20px; background: var(--card-bg); border-radius: 16px;">
+
+        <!-- Header -->
+        <div class="stats-header">
+          <h3>📊 ${filterLabel} - منصة اقرأ</h3>
+          <p>${new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</p>
         </div>
 
-        <div class="stats-summary-grid">
+        <!-- بطاقات الإحصائيات مع أيقونات -->
+        <div class="stats-summary-grid" style="grid-template-columns: repeat(3, 1fr);">
           <div class="stat-card stat-card-primary">
-            <div class="stat-value">${summary.totalStudents}</div>
-            <div class="stat-label">طالب</div>
+            <div class="stat-card-icon">👥</div>
+            <div class="stat-value" data-animated>${summary.totalStudents}</div>
+            <div class="stat-label">طالب مسجل</div>
           </div>
           <div class="stat-card stat-card-accent">
-            <div class="stat-value">${summary.totalAssignments}</div>
-            <div class="stat-label">ورد</div>
+            <div class="stat-card-icon">📖</div>
+            <div class="stat-value" data-animated>${summary.totalAssignments}</div>
+            <div class="stat-label">ورد مجدول</div>
           </div>
           <div class="stat-card stat-card-success">
-            <div class="stat-value">${summary.completedSubmissions}</div>
+            <div class="stat-card-icon">✅</div>
+            <div class="stat-value" data-animated>${summary.completedSubmissions}</div>
             <div class="stat-label">إنجاز مكتمل</div>
           </div>
           <div class="stat-card stat-card-warning">
-            <div class="stat-value">${summary.lateSubmissions}</div>
+            <div class="stat-card-icon">⏰</div>
+            <div class="stat-value" data-animated>${summary.lateSubmissions}</div>
             <div class="stat-label">تسليم متأخر</div>
           </div>
           <div class="stat-card stat-card-info">
-            <div class="stat-value">${summary.totalPointsAwarded}</div>
+            <div class="stat-card-icon">⭐</div>
+            <div class="stat-value" data-animated>${summary.totalPointsAwarded}</div>
             <div class="stat-label">نقاط ممنوحة</div>
           </div>
           <div class="stat-card stat-card-dark">
-            <div class="stat-value">${summary.completionRate}%</div>
-            <div class="stat-label">نسبة الإنجاز</div>
+            <div class="stat-card-icon">📈</div>
+            <div class="stat-value" data-animated>${avgPoints}</div>
+            <div class="stat-label">متوسط النقاط / طالب</div>
+          </div>
+        </div>
+
+        <!-- حلقة نسبة الإنجاز + تفاصيل -->
+        <div class="completion-ring-container">
+          <div class="completion-ring">
+            <svg viewBox="0 0 120 120">
+              <defs>
+                <linearGradient id="completionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color: var(--primary)" />
+                  <stop offset="100%" style="stop-color: var(--success)" />
+                </linearGradient>
+              </defs>
+              <circle class="ring-bg" cx="60" cy="60" r="50" />
+              <circle class="ring-fill" cx="60" cy="60" r="50" style="stroke-dashoffset: ${dashOffset}" />
+            </svg>
+            <div class="completion-ring-value">
+              <div class="percentage">${completionPercent}%</div>
+              <div class="label">نسبة الإنجاز</div>
+            </div>
+          </div>
+          <div class="completion-details">
+            <div class="completion-detail-item">
+              <span class="completion-detail-dot" style="background: var(--success);"></span>
+              <span>في الوقت: ${onTimeSubmissions > 0 ? onTimeSubmissions : 0}</span>
+            </div>
+            <div class="completion-detail-item">
+              <span class="completion-detail-dot" style="background: var(--warning);"></span>
+              <span>متأخر: ${summary.lateSubmissions}</span>
+            </div>
+            <div class="completion-detail-item">
+              <span class="completion-detail-dot" style="background: var(--danger);"></span>
+              <span>غائب: ${absentCount > 0 ? absentCount : 0} (${absenceRate}%)</span>
+            </div>
+            <div class="completion-detail-item">
+              <span class="completion-detail-dot" style="background: var(--primary);"></span>
+              <span>إجمالي: ${summary.totalSubmissions} تسليم</span>
+            </div>
           </div>
         </div>
     `;
 
-    // جدول ترتيب الطلاب
+    // ترتيب الطلاب (Leaderboard)
     if (stats.studentStats && stats.studentStats.length > 0) {
+      const maxPoints = Math.max(...stats.studentStats.map(s => s.totalPoints), 1);
+
       html += `
-        <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--primary);">🏆 ترتيب الطلاب</h4>
-        <div class="table-responsive">
-          <table class="stats-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>الطالب</th>
-                <th>النقاط</th>
-                <th>مكتمل</th>
-                <th>متأخر</th>
-              </tr>
-            </thead>
-            <tbody>
+        <div class="leaderboard-section">
+          <div class="leaderboard-title">
+            <div class="leaderboard-title-icon">🏆</div>
+            <span>ترتيب الطلاب</span>
+          </div>
+          <div class="leaderboard-list">
       `;
 
       stats.studentStats.forEach((s, i) => {
         let medal = '';
-        if (i === 0) medal = '🥇';
-        else if (i === 1) medal = '🥈';
-        else if (i === 2) medal = '🥉';
-        else medal = `${i + 1}`;
+        let rankClass = '';
+        if (i === 0) { medal = '🥇'; rankClass = 'rank-1'; }
+        else if (i === 1) { medal = '🥈'; rankClass = 'rank-2'; }
+        else if (i === 2) { medal = '🥉'; rankClass = 'rank-3'; }
+        else { medal = `${i + 1}`; }
+
+        const progressWidth = Math.round((s.totalPoints / maxPoints) * 100);
+        const avgPointsStudent = s.submissionCount > 0
+          ? Math.round(s.pointsFromAssignments / s.submissionCount)
+          : 0;
 
         html += `
-          <tr>
-            <td style="font-weight: 700; font-size: 1.1rem;">${medal}</td>
-            <td style="font-weight: 700;">${escapeHtml(s.fullName)}</td>
-            <td><span class="points-badge">⭐ ${s.totalPoints}</span></td>
-            <td><span class="badge badge-success">${s.completedCount}</span></td>
-            <td><span class="badge badge-warning">${s.lateCount}</span></td>
-          </tr>
+          <div class="leaderboard-item ${rankClass}">
+            <div class="leaderboard-rank">${medal}</div>
+            <div class="leaderboard-info">
+              <div class="leaderboard-name">${escapeHtml(s.fullName)}</div>
+              <div class="leaderboard-meta">
+                <span class="leaderboard-meta-item">✅ ${s.completedCount} مكتمل</span>
+                <span class="leaderboard-meta-item">⏰ ${s.lateCount} متأخر</span>
+                <span class="leaderboard-meta-item">📊 متوسط ${avgPointsStudent} ن/تسليم</span>
+              </div>
+              <div class="leaderboard-progress">
+                <div class="leaderboard-progress-fill" style="width: ${progressWidth}%"></div>
+              </div>
+            </div>
+            <div class="leaderboard-points">⭐ ${s.totalPoints}</div>
+          </div>
         `;
       });
 
-      html += '</tbody></table></div>';
+      html += '</div></div>';
     }
 
     html += '</div>';
