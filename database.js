@@ -37,7 +37,8 @@ async function registerStudent(fullName, username, password) {
       password: hashedPassword,
       role: 'student',
       teacher_id: null,
-      is_approved: false
+      is_approved: false,
+      points: 0
     }])
     .select()
     .single();
@@ -71,7 +72,8 @@ async function createTeacher(fullName, username, password) {
       password: hashedPassword,
       role: 'teacher',
       teacher_id: null,
-      is_approved: true
+      is_approved: true,
+      points: 0
     }])
     .select()
     .single();
@@ -105,7 +107,8 @@ async function createUser(fullName, username, password, role, teacherId = null) 
       password: hashedPassword,
       role: role,
       teacher_id: teacherId,
-      is_approved: true
+      is_approved: true,
+      points: 0
     }])
     .select()
     .single();
@@ -137,13 +140,14 @@ async function authenticateUser(username, password) {
   return mapUserKeys(userWithoutPassword);
 }
 
+// جلب جميع الطلاب المعتمدين (مشترك بين جميع المعلمين)
 async function getStudentsForTeacher(teacherId) {
   const { data: students, error } = await supabase
     .from('users')
     .select('*')
     .eq('role', 'student')
-    .eq('teacher_id', teacherId)
-    .eq('is_approved', true);
+    .eq('is_approved', true)
+    .order('points', { ascending: false });
 
   if (error) return [];
   return students.map(({ password, ...user }) => mapUserKeys(user));
@@ -210,11 +214,11 @@ async function createAssignment(teacherId, bookName, startPage, endPage, targetD
   return mapAssignmentKeys(data);
 }
 
+// جلب جميع الأوراد (مشترك بين جميع المعلمين)
 async function getAssignmentsForTeacher(teacherId) {
   const { data: assignments, error } = await supabase
     .from('assignments')
     .select('*')
-    .eq('teacher_id', teacherId)
     .order('target_date', { ascending: false });
 
   if (error) return [];
@@ -222,40 +226,44 @@ async function getAssignmentsForTeacher(teacherId) {
 }
 
 async function getAssignmentsForStudentToday(studentId) {
-  const { data: student } = await supabase
-    .from('users')
-    .select('teacher_id')
-    .eq('id', studentId)
-    .single();
-
-  if (!student || !student.teacher_id) return [];
-
   const todayStr = new Date().toLocaleDateString('sv');
+  // حساب تاريخ أمس للسماح بالتسليم المتأخر (يومين مهلة)
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toLocaleDateString('sv');
 
+  // جلب أوراد اليوم وأمس (مهلة يومين)
   const { data: assignments, error } = await supabase
     .from('assignments')
     .select('*')
-    .eq('teacher_id', student.teacher_id)
-    .eq('target_date', todayStr)
-    .order('created_at', { ascending: true });
+    .in('target_date', [todayStr, yesterdayStr])
+    .order('target_date', { ascending: false });
 
   if (error || !assignments) return [];
-  return assignments.map(mapAssignmentKeys);
+
+  // فلترة: أوراد أمس فقط إذا لم يسلمها الطالب بعد
+  const { data: existingSubs } = await supabase
+    .from('submissions')
+    .select('assignment_id')
+    .eq('student_id', studentId);
+
+  const submittedIds = (existingSubs || []).map(s => s.assignment_id);
+
+  const filtered = assignments.filter(a => {
+    // أوراد اليوم تظهر دائماً
+    if (a.target_date === todayStr) return true;
+    // أوراد أمس تظهر فقط إذا لم يسلمها
+    if (a.target_date === yesterdayStr && !submittedIds.includes(a.id)) return true;
+    return false;
+  });
+
+  return filtered.map(mapAssignmentKeys);
 }
 
 async function getAssignmentsHistoryForStudent(studentId) {
-  const { data: student } = await supabase
-    .from('users')
-    .select('teacher_id')
-    .eq('id', studentId)
-    .single();
-
-  if (!student || !student.teacher_id) return [];
-
   const { data: assignments, error } = await supabase
     .from('assignments')
     .select('*')
-    .eq('teacher_id', student.teacher_id)
     .order('target_date', { ascending: false });
 
   if (error) return [];
@@ -265,23 +273,66 @@ async function getAssignmentsHistoryForStudent(studentId) {
 // --- SUBMISSION OPERATIONS ---
 
 async function submitProgress(studentId, assignmentId, isCompleted, questions = '', freeSpace = '') {
+  // جلب بيانات الورد لحساب النقاط
+  const { data: assignment } = await supabase
+    .from('assignments')
+    .select('target_date')
+    .eq('id', assignmentId)
+    .single();
+
+  if (!assignment) throw new Error('الورد غير موجود');
+
+  const todayStr = new Date().toLocaleDateString('sv');
+  const targetDate = assignment.target_date;
+
+  // حساب الفرق بالأيام
+  const today = new Date(todayStr);
+  const target = new Date(targetDate);
+  const diffDays = Math.floor((today - target) / (1000 * 60 * 60 * 24));
+
+  // التحقق من المهلة (يومين فقط)
+  if (diffDays > 1) {
+    throw new Error('انتهت مهلة تسليم هذا الورد (يومين فقط)');
+  }
+
+  // حساب النقاط
+  let pointsToAward = 0;
+  let isLate = false;
+
+  if (isCompleted) {
+    if (diffDays <= 0) {
+      // اليوم الأول (نفس اليوم أو قبله)
+      pointsToAward = 10;
+      isLate = false;
+    } else if (diffDays === 1) {
+      // اليوم الثاني (متأخر)
+      pointsToAward = 5;
+      isLate = true;
+    }
+  }
+
   const { data: existingSubmission } = await supabase
     .from('submissions')
-    .select('id')
+    .select('id, points_awarded')
     .eq('student_id', studentId)
     .eq('assignment_id', assignmentId)
     .single();
 
   let submissionData;
+  let previousPoints = 0;
 
   if (existingSubmission) {
+    previousPoints = existingSubmission.points_awarded || 0;
+
     const { data, error } = await supabase
       .from('submissions')
       .update({
         is_completed: !!isCompleted,
         questions: questions.trim(),
         free_space: freeSpace.trim(),
-        submitted_at: new Date().toISOString()
+        submitted_at: new Date().toISOString(),
+        points_awarded: pointsToAward,
+        is_late: isLate
       })
       .eq('id', existingSubmission.id)
       .select()
@@ -297,7 +348,9 @@ async function submitProgress(studentId, assignmentId, isCompleted, questions = 
         assignment_id: assignmentId,
         is_completed: !!isCompleted,
         questions: questions.trim(),
-        free_space: freeSpace.trim()
+        free_space: freeSpace.trim(),
+        points_awarded: pointsToAward,
+        is_late: isLate
       }])
       .select()
       .single();
@@ -306,14 +359,30 @@ async function submitProgress(studentId, assignmentId, isCompleted, questions = 
     submissionData = data;
   }
 
+  // تحديث نقاط الطالب (إزالة النقاط القديمة وإضافة الجديدة)
+  const pointsDiff = pointsToAward - previousPoints;
+  if (pointsDiff !== 0) {
+    const { data: student } = await supabase
+      .from('users')
+      .select('points')
+      .eq('id', studentId)
+      .single();
+
+    const newPoints = Math.max(0, (student?.points || 0) + pointsDiff);
+    await supabase
+      .from('users')
+      .update({ points: newPoints })
+      .eq('id', studentId);
+  }
+
   return mapSubmissionKeys(submissionData);
 }
 
+// جلب جميع التسليمات للوحة المعلم (مشترك بين جميع المعلمين)
 async function getSubmissionsForTeacherDashboard(teacherId) {
   const { data: assignments, error: err1 } = await supabase
     .from('assignments')
-    .select('id, book_name, start_page, end_page, target_date')
-    .eq('teacher_id', teacherId);
+    .select('id, book_name, start_page, end_page, target_date');
 
   if (err1 || !assignments || !assignments.length) return [];
 
@@ -340,6 +409,8 @@ async function getSubmissionsForTeacherDashboard(teacherId) {
       questions: sub.questions,
       freeSpace: sub.free_space,
       submittedAt: sub.submitted_at,
+      pointsAwarded: sub.points_awarded || 0,
+      isLate: sub.is_late || false,
       studentName: sub.users ? sub.users.full_name : 'طالب محذوف',
       bookName: assignment ? assignment.book_name : 'كتاب غير معروف',
       pages: assignment ? `${assignment.start_page} - ${assignment.end_page}` : '',
@@ -358,6 +429,136 @@ async function getSubmissionsForStudent(studentId) {
   return submissions.map(mapSubmissionKeys);
 }
 
+// --- POINTS OPERATIONS ---
+
+// إضافة نقاط يدوياً من المعلم
+async function addBonusPoints(studentId, points, reason = '') {
+  const { data: student, error: fetchErr } = await supabase
+    .from('users')
+    .select('points, full_name')
+    .eq('id', studentId)
+    .eq('role', 'student')
+    .single();
+
+  if (fetchErr || !student) throw new Error('الطالب غير موجود');
+
+  const newPoints = Math.max(0, (student.points || 0) + points);
+
+  const { error: updateErr } = await supabase
+    .from('users')
+    .update({ points: newPoints })
+    .eq('id', studentId);
+
+  if (updateErr) throw new Error('حدث خطأ أثناء تحديث النقاط');
+
+  return { studentId, fullName: student.full_name, newPoints, pointsAdded: points };
+}
+
+// جلب نقاط الطالب
+async function getStudentPoints(studentId) {
+  const { data: student, error } = await supabase
+    .from('users')
+    .select('points, full_name')
+    .eq('id', studentId)
+    .single();
+
+  if (error || !student) return { points: 0, fullName: '' };
+  return { points: student.points || 0, fullName: student.full_name };
+}
+
+// جلب جميع الطلاب مع نقاطهم (ترتيب بالنقاط)
+async function getAllStudentsWithPoints() {
+  const { data: students, error } = await supabase
+    .from('users')
+    .select('id, full_name, username, points')
+    .eq('role', 'student')
+    .eq('is_approved', true)
+    .order('points', { ascending: false });
+
+  if (error) return [];
+  return students.map(s => ({
+    id: s.id,
+    fullName: s.full_name,
+    username: s.username,
+    points: s.points || 0
+  }));
+}
+
+// جلب الإحصائيات (يومية أو شاملة)
+async function getStatistics(dateFilter = 'all') {
+  // جلب جميع الطلاب المعتمدين
+  const { data: students } = await supabase
+    .from('users')
+    .select('id, full_name, points')
+    .eq('role', 'student')
+    .eq('is_approved', true)
+    .order('points', { ascending: false });
+
+  if (!students) return { students: [], submissions: [], assignments: [], summary: {} };
+
+  // جلب الأوراد
+  let assignmentsQuery = supabase.from('assignments').select('*');
+  if (dateFilter === 'today') {
+    const todayStr = new Date().toLocaleDateString('sv');
+    assignmentsQuery = assignmentsQuery.eq('target_date', todayStr);
+  }
+  const { data: assignments } = await assignmentsQuery.order('target_date', { ascending: false });
+
+  // جلب التسليمات
+  let submissionsData = [];
+  if (assignments && assignments.length > 0) {
+    const assignmentIds = assignments.map(a => a.id);
+    const { data: subs } = await supabase
+      .from('submissions')
+      .select(`*, users:student_id (full_name)`)
+      .in('assignment_id', assignmentIds)
+      .order('submitted_at', { ascending: false });
+    submissionsData = subs || [];
+  }
+
+  // حساب الملخص
+  const totalStudents = students.length;
+  const totalAssignments = (assignments || []).length;
+  const totalSubmissions = submissionsData.length;
+  const completedSubmissions = submissionsData.filter(s => s.is_completed).length;
+  const lateSubmissions = submissionsData.filter(s => s.is_late).length;
+  const totalPointsAwarded = submissionsData.reduce((sum, s) => sum + (s.points_awarded || 0), 0);
+
+  // بيانات كل طالب
+  const studentStats = students.map(student => {
+    const studentSubs = submissionsData.filter(s => s.student_id === student.id);
+    const completed = studentSubs.filter(s => s.is_completed).length;
+    const late = studentSubs.filter(s => s.is_late).length;
+    const pointsFromSubs = studentSubs.reduce((sum, s) => sum + (s.points_awarded || 0), 0);
+
+    return {
+      id: student.id,
+      fullName: student.full_name,
+      totalPoints: student.points || 0,
+      completedCount: completed,
+      lateCount: late,
+      pointsFromAssignments: pointsFromSubs,
+      submissionCount: studentSubs.length
+    };
+  });
+
+  return {
+    summary: {
+      totalStudents,
+      totalAssignments,
+      totalSubmissions,
+      completedSubmissions,
+      lateSubmissions,
+      totalPointsAwarded,
+      completionRate: totalStudents > 0 && totalAssignments > 0
+        ? Math.round((completedSubmissions / (totalStudents * totalAssignments)) * 100)
+        : 0
+    },
+    studentStats,
+    filter: dateFilter
+  };
+}
+
 // Helpers to map snake_case from DB to camelCase for JS
 function mapUserKeys(user) {
   if (!user) return null;
@@ -368,6 +569,7 @@ function mapUserKeys(user) {
     role: user.role,
     teacherId: user.teacher_id,
     isApproved: user.is_approved,
+    points: user.points || 0,
     createdAt: user.created_at
   };
 }
@@ -394,6 +596,8 @@ function mapSubmissionKeys(sub) {
     isCompleted: sub.is_completed,
     questions: sub.questions,
     freeSpace: sub.free_space,
+    pointsAwarded: sub.points_awarded || 0,
+    isLate: sub.is_late || false,
     submittedAt: sub.submitted_at
   };
 }
@@ -472,6 +676,10 @@ module.exports = {
   submitProgress,
   getSubmissionsForTeacherDashboard,
   getSubmissionsForStudent,
+  addBonusPoints,
+  getStudentPoints,
+  getAllStudentsWithPoints,
+  getStatistics,
   deleteUser,
   deleteAssignment,
   getAllTeachers

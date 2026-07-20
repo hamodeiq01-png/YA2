@@ -16,8 +16,57 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function loadStudentDashboard() {
+  loadStudentPoints();
   loadTodayAssignments();
   loadHistory();
+}
+
+// --- تحميل نقاط الطالب ---
+async function loadStudentPoints() {
+  try {
+    const response = await fetch(`${API_BASE}/student/points`, {
+      headers: getAuthHeaders()
+    });
+    const data = await response.json();
+
+    if (response.ok) {
+      const pointsEl = document.getElementById('studentPointsValue');
+      const rankBadgeEl = document.getElementById('studentRankBadge');
+      const rankTextEl = document.getElementById('studentRankText');
+      const motivationEl = document.getElementById('pointsMotivation');
+
+      // تحديث النقاط مع تأثير بصري
+      pointsEl.textContent = data.points || 0;
+
+      // تحديث الترتيب
+      if (data.rank && data.totalStudents) {
+        let rankEmoji = '';
+        if (data.rank === 1) rankEmoji = '🥇';
+        else if (data.rank === 2) rankEmoji = '🥈';
+        else if (data.rank === 3) rankEmoji = '🥉';
+        else rankEmoji = `#${data.rank}`;
+
+        rankBadgeEl.textContent = rankEmoji;
+        rankTextEl.textContent = `ترتيبك ${data.rank} من ${data.totalStudents} طالب`;
+      }
+
+      // رسائل تحفيزية حسب النقاط
+      const points = data.points || 0;
+      if (points === 0) {
+        motivationEl.textContent = 'ابدأ رحلتك في القراءة واكسب أولى نقاطك! 🚀';
+      } else if (points < 30) {
+        motivationEl.textContent = 'بداية ممتازة! واصل القراءة واكسب المزيد! 💪';
+      } else if (points < 70) {
+        motivationEl.textContent = 'أحسنت! أنت في تقدم مستمر، واصل الهمة! 🌟';
+      } else if (points < 150) {
+        motivationEl.textContent = 'ما شاء الله! أنت من المتميزين في القراءة! 🏆';
+      } else {
+        motivationEl.textContent = 'بارك الله فيك! أنت قدوة في المثابرة والقراءة! 👑';
+      }
+    }
+  } catch (error) {
+    console.error('Error loading student points:', error);
+  }
 }
 
 async function loadTodayAssignments() {
@@ -44,8 +93,12 @@ async function loadTodayAssignments() {
         const assign = item.assignment;
         const sub = item.submission;
 
+        // تحديد إذا كان الورد متأخراً
+        const todayStr = new Date().toLocaleDateString('sv');
+        const isLateAssignment = assign.targetDate < todayStr;
+
         let html = `
-          <div class="assignment-block" style="padding: 16px; background: var(--surface); border-radius: 12px; margin-bottom: 16px; border-right: 4px solid var(--primary);">
+          <div class="assignment-block" style="padding: 16px; background: var(--surface); border-radius: 12px; margin-bottom: 16px; border-right: 4px solid ${isLateAssignment ? '#f59e0b' : 'var(--primary)'};">
             <div style="font-size: 1.2rem; font-weight: 800; color: var(--primary); margin-bottom: 8px;">
               📖 كتاب: ${escapeHtml(assign.bookName)}
             </div>
@@ -56,6 +109,7 @@ async function loadTodayAssignments() {
               <span class="user-badge" style="background-color: var(--primary-glow);">
                 مجدول لتاريخ: ${assign.targetDate}
               </span>
+              ${isLateAssignment ? '<span class="badge badge-warning">⏰ تسليم متأخر (5 نقاط بدلاً من 10)</span>' : '<span class="badge badge-success">✨ 10 نقاط عند الإنجاز</span>'}
             </div>`;
 
         if (sub) {
@@ -81,7 +135,11 @@ async function loadTodayAssignments() {
               <h4 style="color: var(--success); font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
                 ✓ تم إرسال إنجاز هذا الورد بنجاح!
               </h4>
-              <p style="font-size: 0.9rem; color: var(--text-main);">لقد أرسلت إنجازك للمعلم، بارك الله في همتك.</p>
+              <p style="font-size: 0.9rem; color: var(--text-main);">
+                لقد أرسلت إنجازك للمعلم، بارك الله في همتك.
+                ${sub.pointsAwarded > 0 ? `<span class="points-badge" style="margin-right: 8px;">+${sub.pointsAwarded} ⭐</span>` : ''}
+                ${sub.isLate ? '<span class="badge badge-warning" style="margin-right: 4px;">متأخر</span>' : ''}
+              </p>
               ${subDetails}
             </div>`;
         } else {
@@ -144,7 +202,7 @@ async function handleSubmitProgress(e, assignmentId, index) {
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
 
-    showAlert('studentAlert', 'تم تسجيل وإرسال إنجازك بنجاح. هنيئاً لك!', 'success');
+    showAlert('studentAlert', data.message, 'success');
     loadStudentDashboard();
   } catch (error) {
     showAlert('studentAlert', error.message, 'danger');
@@ -163,7 +221,7 @@ async function loadHistory() {
       if (data.history.length === 0) {
         historyEl.innerHTML = `
           <tr>
-            <td colspan="4" class="empty-state">
+            <td colspan="5" class="empty-state">
               لا توجد أوراد سابقة مسجلة.
             </td>
           </tr>`;
@@ -176,8 +234,19 @@ async function loadHistory() {
           statusBadge = item.isCompleted 
             ? '<span class="badge badge-success">تم الإنجاز ✓</span>'
             : '<span class="badge badge-danger">لم ينجز ✗</span>';
+          if (item.isLate && item.isCompleted) {
+            statusBadge += ' <span class="badge badge-warning">متأخر</span>';
+          }
         } else {
           statusBadge = '<span class="badge badge-danger" style="background-color: #F3F4F6; color: #9CA3AF;">لم يسجل</span>';
+        }
+
+        // النقاط
+        let pointsDisplay = '';
+        if (item.pointsAwarded > 0) {
+          pointsDisplay = `<span class="points-badge-sm">+${item.pointsAwarded} ⭐</span>`;
+        } else {
+          pointsDisplay = '<span style="color: var(--text-muted);">-</span>';
         }
 
         return `
@@ -186,6 +255,7 @@ async function loadHistory() {
             <td>${item.startPage} - ${item.endPage}</td>
             <td style="font-size: 0.8rem; color: var(--text-muted);">${item.targetDate}</td>
             <td>${statusBadge}</td>
+            <td>${pointsDisplay}</td>
           </tr>
         `;
       }).join('');

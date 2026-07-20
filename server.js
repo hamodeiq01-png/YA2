@@ -165,7 +165,7 @@ app.post('/api/teacher/reject-student', authenticateToken, requireTeacher, async
   }
 });
 
-// Get Students of Teacher
+// Get Students of Teacher (now shows ALL students)
 app.get('/api/teacher/students', authenticateToken, requireTeacher, async (req, res) => {
   try {
     const students = await db.getStudentsForTeacher(req.user.id);
@@ -207,7 +207,7 @@ app.post('/api/teacher/assignments', authenticateToken, requireTeacher, async (r
   }
 });
 
-// Get Assignments Created by Teacher
+// Get Assignments Created by Teacher (now shows ALL assignments)
 app.get('/api/teacher/assignments', authenticateToken, requireTeacher, async (req, res) => {
   try {
     const assignments = await db.getAssignmentsForTeacher(req.user.id);
@@ -217,13 +217,49 @@ app.get('/api/teacher/assignments', authenticateToken, requireTeacher, async (re
   }
 });
 
-// Get Student Submissions (dashboard data)
+// Get Student Submissions (dashboard data - now shows ALL submissions)
 app.get('/api/teacher/submissions', authenticateToken, requireTeacher, async (req, res) => {
   try {
     const submissions = await db.getSubmissionsForTeacherDashboard(req.user.id);
     res.json({ submissions });
   } catch (error) {
     res.status(500).json({ error: 'حدث خطأ في جلب بيانات الإنجازات' });
+  }
+});
+
+// إضافة نقاط يدوياً للطالب
+app.post('/api/teacher/add-points', authenticateToken, requireTeacher, async (req, res) => {
+  const { studentId, points } = req.body;
+
+  if (!studentId || points === undefined || points === null) {
+    return res.status(400).json({ error: 'معرف الطالب وعدد النقاط مطلوبة' });
+  }
+
+  const pointsNum = parseInt(points);
+  if (isNaN(pointsNum) || pointsNum === 0) {
+    return res.status(400).json({ error: 'يرجى إدخال عدد نقاط صحيح (غير صفري)' });
+  }
+
+  try {
+    const result = await db.addBonusPoints(studentId, pointsNum);
+    const action = pointsNum > 0 ? 'إضافة' : 'خصم';
+    res.json({
+      message: `تم ${action} ${Math.abs(pointsNum)} نقطة ${pointsNum > 0 ? 'إلى' : 'من'} "${result.fullName}". الرصيد الجديد: ${result.newPoints} نقطة`,
+      result
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// جلب الإحصائيات
+app.get('/api/teacher/statistics', authenticateToken, requireTeacher, async (req, res) => {
+  const filter = req.query.filter || 'all';
+  try {
+    const statistics = await db.getStatistics(filter);
+    res.json({ statistics });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ في جلب الإحصائيات' });
   }
 });
 
@@ -263,7 +299,7 @@ app.get('/api/teacher/all-teachers', authenticateToken, requireTeacher, async (r
 
 // --- STUDENT APIS ---
 
-// Get Today's Assignments for Student (supports multiple)
+// Get Today's Assignments for Student (supports multiple + 2-day deadline)
 app.get('/api/student/assignments/today', authenticateToken, requireStudent, async (req, res) => {
   try {
     const assignments = await db.getAssignmentsForStudentToday(req.user.id);
@@ -303,6 +339,8 @@ app.get('/api/student/assignments/history', authenticateToken, requireStudent, a
         isCompleted: sub ? sub.isCompleted : false,
         questions: sub ? sub.questions : '',
         freeSpace: sub ? sub.freeSpace : '',
+        pointsAwarded: sub ? sub.pointsAwarded : 0,
+        isLate: sub ? sub.isLate : false,
         submittedAt: sub ? sub.submittedAt : null
       };
     });
@@ -323,9 +361,37 @@ app.post('/api/student/submit', authenticateToken, requireStudent, async (req, r
 
   try {
     const submission = await db.submitProgress(req.user.id, assignmentId, isCompleted, questions, freeSpace);
-    res.json({ message: 'تم إرسال إنجازك بنجاح. بارك الله في همتك!', submission });
+    let message = 'تم إرسال إنجازك بنجاح.';
+    if (submission.pointsAwarded > 0) {
+      message += ` حصلت على ${submission.pointsAwarded} نقطة!`;
+      if (submission.isLate) {
+        message += ' (تسليم متأخر)';
+      }
+    }
+    message += ' بارك الله في همتك!';
+    res.json({ message, submission });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+// جلب نقاط الطالب
+app.get('/api/student/points', authenticateToken, requireStudent, async (req, res) => {
+  try {
+    const pointsData = await db.getStudentPoints(req.user.id);
+    // جلب ترتيب الطالب
+    const allStudents = await db.getAllStudentsWithPoints();
+    const rank = allStudents.findIndex(s => s.id === req.user.id) + 1;
+    const totalStudents = allStudents.length;
+
+    res.json({
+      points: pointsData.points,
+      fullName: pointsData.fullName,
+      rank,
+      totalStudents
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ في جلب النقاط' });
   }
 });
 

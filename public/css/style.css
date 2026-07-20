@@ -3,6 +3,7 @@
 :root {
   --bg-color: #FAF6F0; /* Warm Paper */
   --card-bg: #FFFFFF;
+  --surface: #F8FAFC;
   --text-main: #2D3748;
   --text-muted: #718096;
   --primary: #1C3D2F; /* Deep Academic Green */
@@ -12,7 +13,9 @@
   --accent-light: #FBBF24;
   --success: #10B981;
   --danger: #EF4444;
+  --warning: #F59E0B;
   --border-color: #E2E8F0;
+  --border: #E2E8F0;
   --border-radius: 12px;
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.04);
@@ -206,6 +209,15 @@ header {
   box-shadow: 0 0 0 3px var(--primary-glow);
 }
 
+select.form-control {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23718096' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 16px center;
+  padding-left: 40px;
+}
+
 textarea.form-control {
   min-height: 100px;
   resize: vertical;
@@ -316,6 +328,8 @@ textarea.form-control {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 /* Lists and Tables */
@@ -388,6 +402,245 @@ tr:hover {
 .badge-danger {
   background-color: rgba(239, 68, 68, 0.1);
   color: var(--danger);
+}
+
+.badge-warning {
+  background-color: rgba(245, 158, 11, 0.1);
+  color: var(--warning);
+}
+
+/* Points Badges */
+.points-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: 50px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.1), rgba(251, 191, 36, 0.15));
+  color: var(--accent);
+  border: 1px solid rgba(217, 119, 6, 0.2);
+}
+
+.points-badge-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px 8px;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.08), rgba(251, 191, 36, 0.12));
+  color: var(--accent);
+}
+
+/* ====== POINTS HERO CARD (Student) ====== */
+.points-hero-card {
+  background: linear-gradient(135deg, #1C3D2F 0%, #2A5A45 50%, #1C3D2F 100%);
+  border-radius: 16px;
+  padding: 28px 32px;
+  color: #fff;
+  margin-bottom: 24px;
+  box-shadow: 0 8px 32px rgba(28, 61, 47, 0.25);
+  position: relative;
+  overflow: hidden;
+  animation: fadeIn 0.6s ease;
+}
+
+.points-hero-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -20%;
+  width: 200px;
+  height: 200px;
+  background: rgba(251, 191, 36, 0.08);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.points-hero-card::after {
+  content: '';
+  position: absolute;
+  bottom: -30%;
+  left: -10%;
+  width: 150px;
+  height: 150px;
+  background: rgba(251, 191, 36, 0.05);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.points-hero-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative;
+  z-index: 1;
+}
+
+.points-hero-icon {
+  font-size: 3rem;
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+.points-hero-info {
+  flex: 1;
+}
+
+.points-hero-label {
+  font-size: 0.95rem;
+  opacity: 0.85;
+  font-weight: 500;
+}
+
+.points-hero-value {
+  font-size: 3rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-top: 4px;
+  background: linear-gradient(135deg, #FBBF24, #FDE68A);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.points-hero-rank {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255,255,255,0.15);
+  position: relative;
+  z-index: 1;
+}
+
+.points-rank-badge {
+  font-size: 1.5rem;
+}
+
+.points-rank-text {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.points-hero-message {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  opacity: 0.85;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
+  background: rgba(255,255,255,0.08);
+  padding: 8px 14px;
+  border-radius: 8px;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+/* ====== STATISTICS SECTION ====== */
+.stat-filter-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border-color);
+  background: var(--card-bg);
+  font-family: var(--font-family);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.stat-filter-btn.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+.stat-filter-btn:hover:not(.active) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.stats-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  padding: 16px;
+  border-radius: 10px;
+  text-align: center;
+  transition: var(--transition-smooth);
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.stat-card-primary {
+  background: linear-gradient(135deg, rgba(28, 61, 47, 0.08), rgba(28, 61, 47, 0.15));
+  color: var(--primary);
+}
+
+.stat-card-accent {
+  background: linear-gradient(135deg, rgba(217, 119, 6, 0.08), rgba(217, 119, 6, 0.15));
+  color: var(--accent);
+}
+
+.stat-card-success {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.15));
+  color: var(--success);
+}
+
+.stat-card-warning {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.15));
+  color: var(--warning);
+}
+
+.stat-card-info {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.15));
+  color: #3B82F6;
+}
+
+.stat-card-dark {
+  background: linear-gradient(135deg, rgba(55, 65, 81, 0.08), rgba(55, 65, 81, 0.15));
+  color: #374151;
+}
+
+.stats-table {
+  font-size: 0.9rem;
+}
+
+.stats-table th {
+  font-size: 0.85rem;
+  padding: 10px 14px;
+}
+
+.stats-table td {
+  padding: 10px 14px;
 }
 
 /* Text boxes for submissions details */
@@ -525,6 +778,11 @@ tr:hover {
   }
 
   /* Stats Grid */
+  .stats-summary-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
   .card [style*="grid-template-columns: 1fr 1fr 1fr"] {
     grid-template-columns: 1fr !important;
     gap: 10px !important;
@@ -593,6 +851,23 @@ tr:hover {
   .empty-state-icon {
     font-size: 2.2rem;
   }
+
+  /* Points Hero Card */
+  .points-hero-card {
+    padding: 20px;
+  }
+
+  .points-hero-icon {
+    font-size: 2.2rem;
+  }
+
+  .points-hero-value {
+    font-size: 2.2rem;
+  }
+
+  .points-hero-content {
+    gap: 14px;
+  }
 }
 
 /* ===== RESPONSIVE - SMALL PHONE ===== */
@@ -653,6 +928,19 @@ tr:hover {
     padding: 3px 8px;
   }
 
+  /* Stats Grid */
+  .stats-summary-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .stat-value {
+    font-size: 1.5rem;
+  }
+
   /* Assignment block in student page */
   [style*="display: flex; gap: 20px; align-items: center"] {
     flex-direction: column !important;
@@ -664,5 +952,32 @@ tr:hover {
   button[style*="background: #ef4444"] {
     padding: 5px 10px !important;
     font-size: 0.8rem !important;
+  }
+
+  /* Points Hero */
+  .points-hero-card {
+    padding: 16px;
+  }
+
+  .points-hero-icon {
+    font-size: 1.8rem;
+  }
+
+  .points-hero-value {
+    font-size: 1.8rem;
+  }
+
+  .points-hero-label {
+    font-size: 0.85rem;
+  }
+
+  .points-rank-badge {
+    font-size: 1.2rem;
+  }
+
+  /* Filter buttons */
+  .stat-filter-btn {
+    padding: 4px 10px;
+    font-size: 0.8rem;
   }
 }

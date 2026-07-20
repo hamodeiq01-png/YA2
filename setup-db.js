@@ -5,6 +5,15 @@ const connectionString = 'postgresql://postgres.eedfepjatrxgpdowybyw:BuAIqJ39wTP
 const SQL = `
 -- إضافة عمود حالة الموافقة
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT true;
+
+-- إضافة عمود النقاط للمستخدمين
+ALTER TABLE users ADD COLUMN IF NOT EXISTS points INTEGER DEFAULT 0;
+
+-- إضافة عمود النقاط الممنوحة للتسليمات
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS points_awarded INTEGER DEFAULT 0;
+
+-- إضافة عمود التأخير للتسليمات
+ALTER TABLE submissions ADD COLUMN IF NOT EXISTS is_late BOOLEAN DEFAULT false;
 `;
 
 async function run() {
@@ -13,7 +22,10 @@ async function run() {
     await client.connect();
     console.log('جاري تحديث قاعدة البيانات...');
     await client.query(SQL);
-    console.log('✅ تم إضافة عمود is_approved بنجاح!');
+    console.log('✅ تم تحديث قاعدة البيانات بنجاح!');
+    console.log('   - عمود points في جدول users');
+    console.log('   - عمود points_awarded في جدول submissions');
+    console.log('   - عمود is_late في جدول submissions');
   } catch (err) {
     console.error('❌ خطأ:', err.message);
   } finally {

@@ -27,6 +27,24 @@
   <main class="container">
     <div id="studentAlert" class="alert"></div>
 
+    <!-- بطاقة النقاط التحفيزية -->
+    <div class="points-hero-card" id="pointsHeroCard">
+      <div class="points-hero-content">
+        <div class="points-hero-icon">⭐</div>
+        <div class="points-hero-info">
+          <div class="points-hero-label">نقاطك الإجمالية</div>
+          <div class="points-hero-value" id="studentPointsValue">0</div>
+        </div>
+      </div>
+      <div class="points-hero-rank" id="studentRankInfo">
+        <span class="points-rank-badge" id="studentRankBadge">-</span>
+        <span class="points-rank-text" id="studentRankText">جاري التحميل...</span>
+      </div>
+      <div class="points-hero-message" id="pointsMotivation">
+        واصل القراءة واكسب المزيد من النقاط! 📚
+      </div>
+    </div>
+
     <div class="dashboard-grid">
       <!-- Today's Assignments & Submissions -->
       <section>
@@ -53,11 +71,12 @@
                   <th>الصفحات</th>
                   <th>التاريخ</th>
                   <th>الحالة</th>
+                  <th>النقاط</th>
                 </tr>
               </thead>
               <tbody id="historyList">
                 <tr>
-                  <td colspan="4" class="empty-state">
+                  <td colspan="5" class="empty-state">
                     لا توجد أوراد سابقة مسجلة.
                   </td>
                 </tr>

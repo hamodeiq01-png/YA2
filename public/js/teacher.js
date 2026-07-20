@@ -27,6 +27,7 @@ function loadDashboardData() {
   loadSubmissions();
   loadPendingStudents();
   loadTeachers();
+  loadStatistics('all');
 }
 
 // --- تحميل الطلاب ---
@@ -39,21 +40,42 @@ async function loadStudents() {
     if (response.ok) {
       document.getElementById('statTotalStudents').textContent = data.students.length;
 
+      // تحديث قائمة الطلاب في فورم إضافة النقاط
+      const pointsSelect = document.getElementById('pointsStudentSelect');
+      if (pointsSelect) {
+        pointsSelect.innerHTML = '<option value="">-- اختر طالباً --</option>' +
+          data.students.map(s => `<option value="${s.id}">${escapeHtml(s.fullName)} (${s.points || 0} نقطة)</option>`).join('');
+      }
+
       const listEl = document.getElementById('studentsListSection');
       if (data.students.length === 0) {
         listEl.innerHTML = '<div class="empty-state">لا يوجد طلاب مسجلين بعد.</div>';
         return;
       }
 
-      listEl.innerHTML = data.students.map(student => `
+      listEl.innerHTML = data.students.map((student, index) => {
+        // تحديد ميدالية للمراكز الأولى
+        let rankBadge = '';
+        if (index === 0) rankBadge = '🥇';
+        else if (index === 1) rankBadge = '🥈';
+        else if (index === 2) rankBadge = '🥉';
+
+        return `
         <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-radius: 10px; margin-bottom: 8px; border-right: 3px solid var(--primary);">
-          <div>
-            <span style="font-weight: 700;">${escapeHtml(student.fullName)}</span>
-            <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">@${escapeHtml(student.username)}</span>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.2rem;">${rankBadge}</span>
+            <div>
+              <span style="font-weight: 700;">${escapeHtml(student.fullName)}</span>
+              <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">@${escapeHtml(student.username)}</span>
+            </div>
           </div>
-          <button onclick="handleDeleteUser('${student.id}', '${escapeHtml(student.fullName)}')" style="background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🗑️ حذف</button>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="points-badge">⭐ ${student.points || 0} نقطة</span>
+            <button onclick="handleDeleteUser('${student.id}', '${escapeHtml(student.fullName)}')" style="background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🗑️ حذف</button>
+          </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
   } catch (error) {
     console.error('Error loading students:', error);
@@ -191,7 +213,7 @@ async function loadSubmissions() {
       if (data.submissions.length === 0) {
         listEl.innerHTML = `
           <tr>
-            <td colspan="6" class="empty-state">
+            <td colspan="7" class="empty-state">
               <div class="empty-state-icon">📥</div>
               لا توجد إنجازات مرسلة بعد.
             </td>
@@ -203,6 +225,18 @@ async function loadSubmissions() {
         let statusBadge = sub.isCompleted
           ? '<span class="badge badge-success">أنجز القراءة ✓</span>'
           : '<span class="badge badge-danger">لم ينجز القراءة ✗</span>';
+
+        if (sub.isLate && sub.isCompleted) {
+          statusBadge += ' <span class="badge badge-warning">متأخر</span>';
+        }
+
+        // النقاط
+        let pointsBadge = '';
+        if (sub.pointsAwarded > 0) {
+          pointsBadge = `<span class="points-badge-sm">+${sub.pointsAwarded} ⭐</span>`;
+        } else {
+          pointsBadge = '<span style="color: var(--text-muted); font-size: 0.85rem;">0</span>';
+        }
 
         let detailsHtml = '';
         if (sub.questions) {
@@ -228,6 +262,7 @@ async function loadSubmissions() {
             </td>
             <td><span class="user-badge" style="font-size:0.8rem;">${sub.targetDate}</span></td>
             <td>${statusBadge}</td>
+            <td>${pointsBadge}</td>
             <td style="max-width: 300px;">${detailsHtml}</td>
             <td style="font-size: 0.85rem; color: var(--text-muted);">${dateFormatted}</td>
           </tr>
@@ -239,10 +274,176 @@ async function loadSubmissions() {
   }
 }
 
+// --- الإحصائيات ---
+let currentStatsFilter = 'all';
+
+async function loadStatistics(filter = 'all') {
+  currentStatsFilter = filter;
+
+  // تحديث أزرار الفلتر
+  document.getElementById('statFilterToday').classList.toggle('active', filter === 'today');
+  document.getElementById('statFilterAll').classList.toggle('active', filter === 'all');
+
+  const contentEl = document.getElementById('statisticsContent');
+  contentEl.innerHTML = '<div class="empty-state">جاري تحميل الإحصائيات...</div>';
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/statistics?filter=${filter}`, {
+      headers: getAuthHeaders()
+    });
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.error);
+
+    const stats = data.statistics;
+    const summary = stats.summary;
+    const filterLabel = filter === 'today' ? 'إحصائيات اليوم' : 'إحصائيات شاملة';
+
+    let html = `
+      <div id="statsExportArea" style="padding: 16px; background: var(--card-bg);">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <h3 style="color: var(--primary); margin-bottom: 4px;">📊 ${filterLabel} - منصة اقرأ</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">${new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        </div>
+
+        <div class="stats-summary-grid">
+          <div class="stat-card stat-card-primary">
+            <div class="stat-value">${summary.totalStudents}</div>
+            <div class="stat-label">طالب</div>
+          </div>
+          <div class="stat-card stat-card-accent">
+            <div class="stat-value">${summary.totalAssignments}</div>
+            <div class="stat-label">ورد</div>
+          </div>
+          <div class="stat-card stat-card-success">
+            <div class="stat-value">${summary.completedSubmissions}</div>
+            <div class="stat-label">إنجاز مكتمل</div>
+          </div>
+          <div class="stat-card stat-card-warning">
+            <div class="stat-value">${summary.lateSubmissions}</div>
+            <div class="stat-label">تسليم متأخر</div>
+          </div>
+          <div class="stat-card stat-card-info">
+            <div class="stat-value">${summary.totalPointsAwarded}</div>
+            <div class="stat-label">نقاط ممنوحة</div>
+          </div>
+          <div class="stat-card stat-card-dark">
+            <div class="stat-value">${summary.completionRate}%</div>
+            <div class="stat-label">نسبة الإنجاز</div>
+          </div>
+        </div>
+    `;
+
+    // جدول ترتيب الطلاب
+    if (stats.studentStats && stats.studentStats.length > 0) {
+      html += `
+        <h4 style="margin-top: 20px; margin-bottom: 12px; color: var(--primary);">🏆 ترتيب الطلاب</h4>
+        <div class="table-responsive">
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الطالب</th>
+                <th>النقاط</th>
+                <th>مكتمل</th>
+                <th>متأخر</th>
+              </tr>
+            </thead>
+            <tbody>
+      `;
+
+      stats.studentStats.forEach((s, i) => {
+        let medal = '';
+        if (i === 0) medal = '🥇';
+        else if (i === 1) medal = '🥈';
+        else if (i === 2) medal = '🥉';
+        else medal = `${i + 1}`;
+
+        html += `
+          <tr>
+            <td style="font-weight: 700; font-size: 1.1rem;">${medal}</td>
+            <td style="font-weight: 700;">${escapeHtml(s.fullName)}</td>
+            <td><span class="points-badge">⭐ ${s.totalPoints}</span></td>
+            <td><span class="badge badge-success">${s.completedCount}</span></td>
+            <td><span class="badge badge-warning">${s.lateCount}</span></td>
+          </tr>
+        `;
+      });
+
+      html += '</tbody></table></div>';
+    }
+
+    html += '</div>';
+    contentEl.innerHTML = html;
+
+  } catch (error) {
+    contentEl.innerHTML = `<div class="empty-state">حدث خطأ في تحميل الإحصائيات</div>`;
+    console.error('Error loading statistics:', error);
+  }
+}
+
+// --- تحميل الإحصائيات كصورة ---
+async function downloadStatsAsImage() {
+  const el = document.getElementById('statsExportArea');
+  if (!el) {
+    showAlert('teacherAlert', 'يرجى تحميل الإحصائيات أولاً', 'danger');
+    return;
+  }
+
+  try {
+    const canvas = await html2canvas(el, {
+      backgroundColor: '#FFFFFF',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+
+    const link = document.createElement('a');
+    const filterLabel = currentStatsFilter === 'today' ? 'يومية' : 'شاملة';
+    const dateStr = new Date().toLocaleDateString('sv');
+    link.download = `إحصائيات_اقرأ_${filterLabel}_${dateStr}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+
+    showAlert('teacherAlert', 'تم تحميل الصورة بنجاح!', 'success');
+  } catch (error) {
+    showAlert('teacherAlert', 'حدث خطأ أثناء تحميل الصورة', 'danger');
+    console.error('Error downloading stats image:', error);
+  }
+}
+
+// --- إضافة نقاط يدوياً ---
+async function handleAddPoints(e) {
+  e.preventDefault();
+  const studentId = document.getElementById('pointsStudentSelect').value;
+  const points = document.getElementById('pointsAmount').value;
+
+  if (!studentId || !points) {
+    showAlert('teacherAlert', 'يرجى اختيار الطالب وتحديد عدد النقاط', 'danger');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/add-points`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ studentId, points: parseInt(points) })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', data.message, 'success');
+    document.getElementById('addPointsForm').reset();
+    loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
+  }
+}
+
 // --- وظائف الحذف ---
 
 async function handleDeleteUser(userId, userName) {
-  if (!confirm(`هل أنت متأكد من حذف "${userName}"؟\nسيتم حذف جميع بياناته نهائياً!`)) return;
+  if (!confirm(`هل أنت متأكد من حذف "${userName}"?\nسيتم حذف جميع بياناته نهائياً!`)) return;
 
   try {
     const response = await fetch(`${API_BASE}/teacher/delete-user/${userId}`, {
@@ -260,7 +461,7 @@ async function handleDeleteUser(userId, userName) {
 }
 
 async function handleDeleteAssignment(assignmentId, bookName) {
-  if (!confirm(`هل أنت متأكد من حذف ورد "${bookName}"؟\nسيتم حذف جميع التسليمات المرتبطة به!`)) return;
+  if (!confirm(`هل أنت متأكد من حذف ورد "${bookName}"?\nسيتم حذف جميع التسليمات المرتبطة به!`)) return;
 
   try {
     const response = await fetch(`${API_BASE}/teacher/delete-assignment/${assignmentId}`, {
