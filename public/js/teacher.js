@@ -500,22 +500,39 @@ async function downloadStatsAsImage() {
   }
 }
 
-// --- إضافة نقاط يدوياً ---
-async function handleAddPoints(e) {
-  e.preventDefault();
+// --- إضافة / خصم نقاط ---
+async function handlePointsAction(action) {
   const studentId = document.getElementById('pointsStudentSelect').value;
-  const points = document.getElementById('pointsAmount').value;
+  const pointsInput = document.getElementById('pointsAmount').value;
+  const reason = document.getElementById('pointsReason') ? document.getElementById('pointsReason').value.trim() : '';
 
-  if (!studentId || !points) {
+  if (!studentId || !pointsInput) {
     showAlert('teacherAlert', 'يرجى اختيار الطالب وتحديد عدد النقاط', 'danger');
     return;
+  }
+
+  let points = Math.abs(parseInt(pointsInput));
+  if (isNaN(points) || points === 0) {
+    showAlert('teacherAlert', 'يرجى إدخال عدد نقاط صحيح', 'danger');
+    return;
+  }
+
+  if (action === 'deduct') {
+    // تأكيد الخصم
+    const selectedOption = document.getElementById('pointsStudentSelect').selectedOptions[0];
+    const studentName = selectedOption ? selectedOption.textContent : 'الطالب';
+    const reasonText = reason ? ` بسبب: ${reason}` : '';
+    if (!confirm(`هل أنت متأكد من خصم ${points} نقطة من ${studentName}؟${reasonText}`)) {
+      return;
+    }
+    points = -points; // تحويل لسالب
   }
 
   try {
     const response = await fetch(`${API_BASE}/teacher/add-points`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ studentId, points: parseInt(points) })
+      body: JSON.stringify({ studentId, points })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);

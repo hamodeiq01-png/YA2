@@ -105,10 +105,10 @@
           </form>
         </div>
 
-        <!-- إضافة نقاط يدوياً -->
+        <!-- إضافة / خصم نقاط -->
         <div class="card">
-          <h3 class="card-title">إضافة نقاط للطالب ⭐</h3>
-          <form id="addPointsForm" onsubmit="handleAddPoints(event)">
+          <h3 class="card-title">إدارة نقاط الطالب ⭐</h3>
+          <form id="addPointsForm" onsubmit="return false;">
             <div class="form-group">
               <label for="pointsStudentSelect">اختر الطالب</label>
               <select id="pointsStudentSelect" class="form-control" required>
@@ -117,9 +117,16 @@
             </div>
             <div class="form-group">
               <label for="pointsAmount">عدد النقاط</label>
-              <input type="number" id="pointsAmount" class="form-control" placeholder="مثال: 5 أو -3" required>
+              <input type="number" id="pointsAmount" class="form-control" min="1" placeholder="مثال: 5" required>
             </div>
-            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, #D97706, #F59E0B);">⭐ إضافة النقاط</button>
+            <div class="form-group">
+              <label for="pointsReason">السبب (اختياري)</label>
+              <input type="text" id="pointsReason" class="form-control" placeholder="مثال: مشاركة متميزة، تأخر...">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <button type="button" onclick="handlePointsAction('add')" class="btn btn-primary" style="background: linear-gradient(135deg, #059669, #10B981);">⭐ إضافة</button>
+              <button type="button" onclick="handlePointsAction('deduct')" class="btn btn-primary" style="background: linear-gradient(135deg, #DC2626, #EF4444);">🔻 خصم</button>
+            </div>
           </form>
         </div>
       </aside>
