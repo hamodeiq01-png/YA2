@@ -1245,6 +1245,53 @@ tr:hover {
   margin-bottom: 5px;
 }
 
+/* ====== FILE UPLOAD AREA ====== */
+.file-upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 2.5px dashed var(--border-color);
+  border-radius: 14px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  background: var(--surface);
+  text-align: center;
+}
+
+.file-upload-area:hover {
+  border-color: var(--primary);
+  background: var(--primary-glow);
+  transform: translateY(-2px);
+}
+
+.file-upload-area:active {
+  transform: translateY(0);
+}
+
+.file-upload-area.file-upload-has-file {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.06);
+  border-style: solid;
+}
+
+.file-upload-icon {
+  font-size: 2rem;
+}
+
+.file-upload-text {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.file-upload-has-file .file-upload-text {
+  color: var(--success);
+}
+
 /* ====== DAILY QUOTE ====== */
 .daily-quote {
   display: flex;

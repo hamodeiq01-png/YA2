@@ -719,33 +719,50 @@ async function loadBookNames() {
   }
 }
 
-// --- معاينة صورة الكتاب ---
-document.addEventListener('DOMContentLoaded', () => {
-  const urlInput = document.getElementById('bookImageUrl');
-  if (urlInput) {
-    urlInput.addEventListener('input', () => {
-      const url = urlInput.value.trim();
-      const preview = document.getElementById('bookImagePreview');
-      const previewImg = document.getElementById('bookImagePreviewImg');
-      if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-        previewImg.src = url;
-        previewImg.onload = () => { preview.style.display = 'block'; };
-        previewImg.onerror = () => { preview.style.display = 'none'; };
-      } else {
-        preview.style.display = 'none';
-      }
-    });
+// --- معاينة صورة الكتاب من الملف ---
+let currentBookImageBase64 = null;
+
+function previewBookImage(input) {
+  const file = input.files[0];
+  const preview = document.getElementById('bookImagePreview');
+  const previewImg = document.getElementById('bookImagePreviewImg');
+  const uploadText = document.getElementById('fileUploadText');
+  const uploadArea = document.getElementById('fileUploadArea');
+
+  if (!file) {
+    preview.style.display = 'none';
+    currentBookImageBase64 = null;
+    uploadText.textContent = 'اضغط لاختيار صورة من الألبوم';
+    uploadArea.classList.remove('file-upload-has-file');
+    return;
   }
-});
+
+  // التحقق من الحجم (max 2MB)
+  if (file.size > 2 * 1024 * 1024) {
+    showAlert('teacherAlert', 'حجم الصورة كبير جداً. الحد الأقصى 2 ميجابايت.', 'danger');
+    input.value = '';
+    currentBookImageBase64 = null;
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentBookImageBase64 = e.target.result;
+    previewImg.src = currentBookImageBase64;
+    preview.style.display = 'block';
+    uploadText.textContent = '✓ تم اختيار: ' + file.name;
+    uploadArea.classList.add('file-upload-has-file');
+  };
+  reader.readAsDataURL(file);
+}
 
 // --- تعيين صورة كتاب ---
 async function handleSetBookImage(e) {
   e.preventDefault();
   const bookName = document.getElementById('imageBookName').value;
-  const imageUrl = document.getElementById('bookImageUrl').value.trim();
 
-  if (!bookName || !imageUrl) {
-    showAlert('teacherAlert', 'يرجى اختيار الكتاب وإدخال رابط الصورة', 'danger');
+  if (!bookName || !currentBookImageBase64) {
+    showAlert('teacherAlert', 'يرجى اختيار الكتاب واختيار صورة من الألبوم', 'danger');
     return;
   }
 
@@ -753,7 +770,7 @@ async function handleSetBookImage(e) {
     const response = await fetch(`${API_BASE}/teacher/set-book-image`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify({ bookName, imageUrl })
+      body: JSON.stringify({ bookName, imageUrl: currentBookImageBase64 })
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error);
@@ -761,6 +778,9 @@ async function handleSetBookImage(e) {
     showAlert('teacherAlert', data.message, 'success');
     document.getElementById('bookImageForm').reset();
     document.getElementById('bookImagePreview').style.display = 'none';
+    document.getElementById('fileUploadText').textContent = 'اضغط لاختيار صورة من الألبوم';
+    document.getElementById('fileUploadArea').classList.remove('file-upload-has-file');
+    currentBookImageBase64 = null;
   } catch (error) {
     showAlert('teacherAlert', error.message, 'danger');
   }
