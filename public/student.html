@@ -27,50 +27,86 @@
   <main class="container">
     <div id="studentAlert" class="alert"></div>
 
-    <!-- بطاقة النقاط التحفيزية -->
-    <div class="points-hero-card" id="pointsHeroCard">
-      <div class="points-hero-content">
-        <div class="points-hero-icon">⭐</div>
-        <div class="points-hero-info">
-          <div class="points-hero-label">نقاطك الإجمالية</div>
-          <div class="points-hero-value" id="studentPointsValue">0</div>
+    <!-- ============ الشاشة 1: اختيار الكتاب ============ -->
+    <div id="booksView">
+      <!-- بطاقة النقاط الإجمالية -->
+      <div class="points-hero-card" id="pointsHeroCard">
+        <div class="points-hero-content">
+          <div class="points-hero-icon">⭐</div>
+          <div class="points-hero-info">
+            <div class="points-hero-label">نقاطك الإجمالية</div>
+            <div class="points-hero-value" id="studentPointsValue">0</div>
+          </div>
+        </div>
+        <div class="points-hero-rank" id="studentRankInfo">
+          <span class="points-rank-badge" id="studentRankBadge">-</span>
+          <span class="points-rank-text" id="studentRankText">جاري التحميل...</span>
+        </div>
+        <div class="points-hero-message" id="pointsMotivation">
+          واصل القراءة واكسب المزيد من النقاط! 📚
         </div>
       </div>
-      <div class="points-hero-rank" id="studentRankInfo">
-        <span class="points-rank-badge" id="studentRankBadge">-</span>
-        <span class="points-rank-text" id="studentRankText">جاري التحميل...</span>
+
+      <!-- عنوان الكتب -->
+      <div class="books-section-header">
+        <h2>📚 كتبك المطلوبة</h2>
+        <p>اختر كتاباً للدخول إلى صفحته ومتابعة أوراد القراءة</p>
       </div>
-      <div class="points-hero-message" id="pointsMotivation">
-        واصل القراءة واكسب المزيد من النقاط! 📚
+
+      <!-- شبكة بطاقات الكتب -->
+      <div id="booksGrid" class="books-select-grid">
+        <div class="empty-state">
+          <div class="empty-state-icon">⏳</div>
+          جاري تحميل الكتب...
+        </div>
       </div>
     </div>
 
-    <div style="margin-top: 24px;">
-      <!-- Today's Assignments grouped by Book -->
-      <section>
-        <div class="card">
-          <h3 class="card-title">أوراد القراءة المطلوبة 📖</h3>
-          <div id="assignmentsContainer">
-            <div class="empty-state">
-              <div class="empty-state-icon">⏳</div>
-              جاري تحميل أوراد اليوم...
-            </div>
-          </div>
-        </div>
-      </section>
+    <!-- ============ الشاشة 2: صفحة كتاب محدد ============ -->
+    <div id="bookDetailView" style="display: none;">
+      <!-- زر الرجوع -->
+      <button onclick="goBackToBooks()" class="back-to-books-btn" id="backBtn">
+        → الرجوع إلى الكتب
+      </button>
 
-      <!-- History of Assignments grouped by Book -->
-      <section style="margin-top: 24px;">
-        <div class="card">
-          <h3 class="card-title">سجل قراءاتك السابقة 📚</h3>
-          <div id="historyContainer">
-            <div class="empty-state">
-              لا توجد أوراد سابقة مسجلة.
-            </div>
+      <!-- هيدر الكتاب -->
+      <div class="book-detail-hero" id="bookDetailHero">
+        <div class="book-detail-hero-icon" id="bookDetailIcon">📗</div>
+        <div class="book-detail-hero-info">
+          <h2 id="bookDetailName">اسم الكتاب</h2>
+          <div class="book-detail-hero-stats">
+            <span class="book-detail-stat" id="bookDetailPointsStat">
+              ⭐ <strong id="bookDetailPoints">0</strong> نقطة
+            </span>
+            <span class="book-detail-stat" id="bookDetailOrdsStat">
+              📖 <strong id="bookDetailOrdsCount">0</strong> ورد
+            </span>
           </div>
         </div>
-      </section>
+      </div>
+
+      <!-- أوراد القراءة المطلوبة لهذا الكتاب -->
+      <div class="card" style="margin-top: 20px;">
+        <h3 class="card-title">أوراد القراءة المطلوبة 📖</h3>
+        <div id="bookAssignmentsContainer">
+          <div class="empty-state">
+            <div class="empty-state-icon">⏳</div>
+            جاري التحميل...
+          </div>
+        </div>
+      </div>
+
+      <!-- سجل القراءات السابقة لهذا الكتاب -->
+      <div class="card" style="margin-top: 20px;">
+        <h3 class="card-title">سجل قراءاتك السابقة 📚</h3>
+        <div id="bookHistoryContainer">
+          <div class="empty-state">
+            لا توجد أوراد سابقة لهذا الكتاب.
+          </div>
+        </div>
+      </div>
     </div>
+
   </main>
 
   <script src="js/auth.js"></script>
