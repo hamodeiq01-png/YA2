@@ -20,7 +20,27 @@ window.addEventListener('DOMContentLoaded', () => {
   loadStudentDashboard();
 });
 
+// --- الرسائل التشجيعية اليومية ---
+const dailyQuotes = [
+  '﴿اقْرَأْ بِاسْمِ رَبِّكَ الَّذِي خَلَقَ﴾ — سورة العلق',
+  'قال ﷺ: «خيركم من تعلّم القرآن وعلّمه» — رواه البخاري',
+  'قال ابن القيم: «بالصبر واليقين تُنال الإمامة في الدين»',
+  '﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾ — سورة طه',
+  'قال ﷺ: «من سلك طريقًا يلتمس فيه علمًا سهّل الله له طريقًا إلى الجنة» — رواه مسلم',
+  '﴿إِنَّ مَعَ الْعُسْرِ يُسْرًا﴾ — سورة الشرح',
+  'قال الشافعي: «من لم يذق ذلّ التعلّم ساعة، بقي في ذلّ الجهل أبدًا»'
+];
+
+function setDailyQuote() {
+  const dayIndex = new Date().getDay(); // 0=Sunday ... 6=Saturday
+  const quoteEl = document.getElementById('dailyQuoteText');
+  if (quoteEl) {
+    quoteEl.textContent = dailyQuotes[dayIndex];
+  }
+}
+
 function loadStudentDashboard() {
+  setDailyQuote();
   loadStudentPoints();
   loadBooksOverview();
 }
@@ -74,6 +94,17 @@ async function loadStudentPoints() {
 function getBookIcon(index) {
   const icons = ['📗', '📘', '📕', '📙', '📓', '📔', '📒', '📚'];
   return icons[index % icons.length];
+}
+
+// --- جلب صورة الكتاب ---
+function getBookImage(bookName) {
+  // البحث عن صورة من الأوراد الحالية
+  const assignWithImage = allAssignmentsData.find(a => a.assignment.bookName === bookName && a.assignment.bookImage);
+  if (assignWithImage) return assignWithImage.assignment.bookImage;
+  // البحث من السجل
+  const histWithImage = allHistoryData.find(h => h.bookName === bookName && h.bookImage);
+  if (histWithImage) return histWithImage.bookImage;
+  return null;
 }
 
 // --- تحديث قسم ثماري ---
@@ -187,10 +218,16 @@ async function loadBooksOverview() {
         urgencyBadge = `<div class="book-select-badge book-select-badge-done">✓ مكتمل</div>`;
       }
 
+      // صورة الكتاب
+      const bookImage = getBookImage(bookName);
+      const imageHtml = bookImage
+        ? `<img src="${escapeHtml(bookImage)}" alt="${escapeHtml(bookName)}" class="book-select-cover">`
+        : `<div class="book-select-icon">${icon}</div>`;
+
       return `
         <div class="book-select-card" onclick="openBook('${escapeHtml(bookName).replace(/'/g, "\\'")}')">
           ${urgencyBadge}
-          <div class="book-select-icon">${icon}</div>
+          ${imageHtml}
           <h3 class="book-select-name">${escapeHtml(bookName)}</h3>
           <div class="book-select-stats">
             <div class="book-select-stat">
@@ -229,16 +266,22 @@ function openBook(bookName) {
   void detailView.offsetWidth; // force reflow
   detailView.classList.add('view-enter');
 
-  // تحديد أيقونة الكتاب
+  // تحديد أيقونة/صورة الكتاب
   const bookNames = [...new Set([
     ...allAssignmentsData.map(a => a.assignment.bookName),
     ...allHistoryData.map(h => h.bookName)
   ])];
   const bookIndex = bookNames.indexOf(bookName);
   const icon = getBookIcon(bookIndex >= 0 ? bookIndex : 0);
+  const bookImage = getBookImage(bookName);
 
   // تحديث هيدر الكتاب
-  document.getElementById('bookDetailIcon').textContent = icon;
+  const iconEl = document.getElementById('bookDetailIcon');
+  if (bookImage) {
+    iconEl.innerHTML = `<img src="${escapeHtml(bookImage)}" alt="${escapeHtml(bookName)}" class="book-detail-cover">`;
+  } else {
+    iconEl.textContent = icon;
+  }
   document.getElementById('bookDetailName').textContent = bookName;
 
   // تحميل بيانات الكتاب

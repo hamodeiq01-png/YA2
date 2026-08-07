@@ -326,6 +326,25 @@ app.put('/api/teacher/rename-book', authenticateToken, requireTeacher, async (re
   }
 });
 
+// تعيين صورة لكتاب
+app.put('/api/teacher/set-book-image', authenticateToken, requireTeacher, async (req, res) => {
+  const { bookName, imageUrl } = req.body;
+
+  if (!bookName || !imageUrl) {
+    return res.status(400).json({ error: 'اسم الكتاب ورابط الصورة مطلوبان' });
+  }
+
+  try {
+    const result = await db.setBookImage(bookName, imageUrl);
+    res.json({
+      message: `تم تعيين صورة للكتاب "${bookName}" بنجاح`,
+      result
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // --- STUDENT APIS ---
 
 // Get Today's Assignments for Student (supports multiple + 2-day deadline)
@@ -362,6 +381,7 @@ app.get('/api/student/assignments/history', authenticateToken, requireStudent, a
       return {
         id: a.id,
         bookName: a.bookName,
+        bookImage: a.bookImage || null,
         startPage: a.startPage,
         endPage: a.endPage,
         targetDate: a.targetDate,

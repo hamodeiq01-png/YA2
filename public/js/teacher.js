@@ -703,14 +703,66 @@ async function loadBookNames() {
     });
     const data = await response.json();
     if (response.ok) {
-      const select = document.getElementById('oldBookName');
-      if (select) {
-        select.innerHTML = '<option value="">-- اختر كتاباً --</option>' +
-          data.bookNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
-      }
+      const options = '<option value="">-- اختر كتاباً --</option>' +
+        data.bookNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+
+      // تحديث قائمة تعديل الاسم
+      const renameSelect = document.getElementById('oldBookName');
+      if (renameSelect) renameSelect.innerHTML = options;
+
+      // تحديث قائمة صورة الكتاب
+      const imageSelect = document.getElementById('imageBookName');
+      if (imageSelect) imageSelect.innerHTML = options;
     }
   } catch (error) {
     console.error('Error loading book names:', error);
+  }
+}
+
+// --- معاينة صورة الكتاب ---
+document.addEventListener('DOMContentLoaded', () => {
+  const urlInput = document.getElementById('bookImageUrl');
+  if (urlInput) {
+    urlInput.addEventListener('input', () => {
+      const url = urlInput.value.trim();
+      const preview = document.getElementById('bookImagePreview');
+      const previewImg = document.getElementById('bookImagePreviewImg');
+      if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+        previewImg.src = url;
+        previewImg.onload = () => { preview.style.display = 'block'; };
+        previewImg.onerror = () => { preview.style.display = 'none'; };
+      } else {
+        preview.style.display = 'none';
+      }
+    });
+  }
+});
+
+// --- تعيين صورة كتاب ---
+async function handleSetBookImage(e) {
+  e.preventDefault();
+  const bookName = document.getElementById('imageBookName').value;
+  const imageUrl = document.getElementById('bookImageUrl').value.trim();
+
+  if (!bookName || !imageUrl) {
+    showAlert('teacherAlert', 'يرجى اختيار الكتاب وإدخال رابط الصورة', 'danger');
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/set-book-image`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ bookName, imageUrl })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', data.message, 'success');
+    document.getElementById('bookImageForm').reset();
+    document.getElementById('bookImagePreview').style.display = 'none';
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
   }
 }
 

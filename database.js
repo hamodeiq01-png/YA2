@@ -593,6 +593,7 @@ function mapAssignmentKeys(assignment) {
     id: assignment.id,
     teacherId: assignment.teacher_id,
     bookName: assignment.book_name,
+    bookImage: assignment.book_image || null,
     startPage: assignment.start_page,
     endPage: assignment.end_page,
     targetDate: assignment.target_date,
@@ -685,6 +686,24 @@ async function getUniqueBookNames() {
   return uniqueNames.sort();
 }
 
+// تعيين صورة لكتاب
+async function setBookImage(bookName, imageUrl) {
+  if (!bookName || !imageUrl) {
+    throw new Error('اسم الكتاب ورابط الصورة مطلوبان');
+  }
+
+  const { data, error } = await supabase
+    .from('assignments')
+    .update({ book_image: imageUrl.trim() })
+    .eq('book_name', bookName.trim())
+    .select();
+
+  if (error) throw new Error('حدث خطأ أثناء تعيين صورة الكتاب');
+  if (!data || data.length === 0) throw new Error('لم يتم العثور على أوراد بهذا الاسم');
+
+  return { bookName: bookName.trim(), updatedCount: data.length };
+}
+
 // تعديل اسم كتاب (تحديث جميع الأوراد بالاسم القديم)
 async function renameBook(oldName, newName) {
   if (!oldName || !newName || oldName.trim() === '' || newName.trim() === '') {
@@ -731,5 +750,6 @@ module.exports = {
   deleteAssignment,
   getAllTeachers,
   getUniqueBookNames,
+  setBookImage,
   renameBook
 };

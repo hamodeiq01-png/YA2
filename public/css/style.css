@@ -1245,6 +1245,78 @@ tr:hover {
   margin-bottom: 5px;
 }
 
+/* ====== DAILY QUOTE ====== */
+.daily-quote {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 18px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  margin-top: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.daily-quote-icon {
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.daily-quote-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.92);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+/* ====== BOOK COVER IMAGES ====== */
+.book-select-cover {
+  width: 90px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
+  margin-bottom: 14px;
+  transition: transform 0.3s ease;
+}
+
+.book-select-card:hover .book-select-cover {
+  transform: scale(1.08) rotate(-2deg);
+}
+
+.book-detail-cover {
+  width: 65px;
+  height: 85px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 480px) {
+  .daily-quote {
+    padding: 10px 14px;
+    gap: 8px;
+  }
+
+  .daily-quote-text {
+    font-size: 0.82rem;
+  }
+
+  .book-select-cover {
+    width: 70px;
+    height: 95px;
+    margin-bottom: 10px;
+  }
+
+  .book-detail-cover {
+    width: 50px;
+    height: 65px;
+  }
+}
+
 /* ====== THAMARI (ثماري) SECTION ====== */
 .thamari-section {
   background: var(--card-bg);
