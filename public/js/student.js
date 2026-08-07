@@ -76,6 +76,39 @@ function getBookIcon(index) {
   return icons[index % icons.length];
 }
 
+// --- تحديث قسم ثماري ---
+function updateThamari() {
+  const history = allHistoryData;
+
+  // الأوراد المنجزة (اللي فيها تسليم و isCompleted)
+  const completedOrds = history.filter(h => h.isCompleted);
+
+  // عدد الصفحات المقروءة (من الأوراد المنجزة فقط)
+  const totalPages = completedOrds.reduce((sum, h) => {
+    const pages = Math.max(0, (h.endPage || 0) - (h.startPage || 0) + 1);
+    return sum + pages;
+  }, 0);
+
+  // مجموع النقاط
+  const totalPoints = history.reduce((sum, h) => sum + (h.pointsAwarded || 0), 0);
+
+  // عدد الكتب الفريدة
+  const uniqueBooks = new Set(history.map(h => h.bookName));
+
+  // نسبة الإنجاز
+  const totalOrds = history.length;
+  const completedCount = completedOrds.length;
+  const rate = totalOrds > 0 ? Math.round((completedCount / totalOrds) * 100) : 0;
+
+  // تحديث العناصر
+  document.getElementById('thamariPages').textContent = totalPages;
+  document.getElementById('thamariCompleted').textContent = completedCount;
+  document.getElementById('thamariTotal').textContent = totalOrds;
+  document.getElementById('thamariPoints').textContent = totalPoints;
+  document.getElementById('thamariBooks').textContent = uniqueBooks.size;
+  document.getElementById('thamariRate').textContent = rate + '%';
+}
+
 // --- تحميل بطاقات الكتب (الشاشة الرئيسية) ---
 async function loadBooksOverview() {
   const grid = document.getElementById('booksGrid');
@@ -101,6 +134,9 @@ async function loadBooksOverview() {
     // حفظ البيانات
     allAssignmentsData = assignData.assignments || [];
     allHistoryData = histData.history || [];
+
+    // تحديث ثماري
+    updateThamari();
 
     // استخراج أسماء الكتب الفريدة من الأوراد والسجل
     const bookNamesSet = new Set();

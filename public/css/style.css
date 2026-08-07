@@ -1245,6 +1245,228 @@ tr:hover {
   margin-bottom: 5px;
 }
 
+/* ====== THAMARI (ثماري) SECTION ====== */
+.thamari-section {
+  background: var(--card-bg);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(28, 61, 47, 0.06);
+  overflow: hidden;
+  margin-bottom: 28px;
+  animation: fadeIn 0.5s ease;
+}
+
+.thamari-header {
+  background: linear-gradient(135deg, #92400E 0%, #B45309 40%, #D97706 100%);
+  padding: 20px 28px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  overflow: hidden;
+}
+
+.thamari-header::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -15%;
+  width: 160px;
+  height: 160px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.thamari-header::after {
+  content: '';
+  position: absolute;
+  bottom: -50%;
+  right: -10%;
+  width: 120px;
+  height: 120px;
+  background: rgba(251, 191, 36, 0.1);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.thamari-icon {
+  font-size: 2.2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.thamari-header h2 {
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 800;
+  margin-bottom: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.thamari-header p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.85rem;
+  font-weight: 500;
+  position: relative;
+  z-index: 1;
+}
+
+.thamari-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding: 22px 24px;
+}
+
+.thamari-card {
+  padding: 18px 14px;
+  border-radius: 14px;
+  text-align: center;
+  transition: var(--transition-smooth);
+  position: relative;
+  overflow: hidden;
+  animation: statCardEnter 0.5s ease forwards;
+  opacity: 0;
+  transform: translateY(15px);
+}
+
+.thamari-card:nth-child(1) { animation-delay: 0.05s; }
+.thamari-card:nth-child(2) { animation-delay: 0.1s; }
+.thamari-card:nth-child(3) { animation-delay: 0.15s; }
+.thamari-card:nth-child(4) { animation-delay: 0.2s; }
+.thamari-card:nth-child(5) { animation-delay: 0.25s; }
+.thamari-card:nth-child(6) { animation-delay: 0.3s; }
+
+.thamari-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.thamari-card-icon {
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+}
+
+.thamari-card-value {
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.thamari-card-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  opacity: 0.8;
+}
+
+/* Card color variants */
+.thamari-card-pages {
+  background: linear-gradient(145deg, rgba(59, 130, 246, 0.06), rgba(59, 130, 246, 0.14));
+  color: #2563EB;
+  border: 1px solid rgba(59, 130, 246, 0.1);
+}
+
+.thamari-card-ords {
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.14));
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.1);
+}
+
+.thamari-card-total {
+  background: linear-gradient(145deg, rgba(28, 61, 47, 0.06), rgba(28, 61, 47, 0.14));
+  color: var(--primary);
+  border: 1px solid rgba(28, 61, 47, 0.1);
+}
+
+.thamari-card-points {
+  background: linear-gradient(145deg, rgba(217, 119, 6, 0.06), rgba(217, 119, 6, 0.14));
+  color: var(--accent);
+  border: 1px solid rgba(217, 119, 6, 0.1);
+}
+
+.thamari-card-books {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.06), rgba(139, 92, 246, 0.14));
+  color: #7C3AED;
+  border: 1px solid rgba(139, 92, 246, 0.1);
+}
+
+.thamari-card-rate {
+  background: linear-gradient(145deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.14));
+  color: var(--warning);
+  border: 1px solid rgba(245, 158, 11, 0.1);
+}
+
+/* Thamari responsive */
+@media (max-width: 768px) {
+  .thamari-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    padding: 16px;
+  }
+
+  .thamari-card {
+    padding: 14px 10px;
+  }
+
+  .thamari-card-value {
+    font-size: 1.5rem;
+  }
+
+  .thamari-card-icon {
+    font-size: 1.3rem;
+  }
+
+  .thamari-header {
+    padding: 16px 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .thamari-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    padding: 14px;
+  }
+
+  .thamari-card {
+    padding: 12px 8px;
+  }
+
+  .thamari-card-value {
+    font-size: 1.3rem;
+  }
+
+  .thamari-card-icon {
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+  }
+
+  .thamari-card-label {
+    font-size: 0.72rem;
+  }
+
+  .thamari-header {
+    padding: 14px 16px;
+    gap: 10px;
+  }
+
+  .thamari-icon {
+    font-size: 1.8rem;
+  }
+
+  .thamari-header h2 {
+    font-size: 1.1rem;
+  }
+
+  .thamari-header p {
+    font-size: 0.78rem;
+  }
+}
+
 /* ====== BOOK SELECTION GRID - Student Main Page ====== */
 .books-section-header {
   text-align: center;
