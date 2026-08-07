@@ -28,6 +28,7 @@ function loadDashboardData() {
   loadPendingStudents();
   loadTeachers();
   loadStatistics('all');
+  loadBookNames();
 }
 
 // --- تحميل الطلاب ---
@@ -688,6 +689,57 @@ async function handleCreateTeacher(e) {
 
     showAlert('teacherAlert', `تم إنشاء حساب المعلم "${fullName}" بنجاح!`, 'success');
     document.getElementById('teacherForm').reset();
+    loadDashboardData();
+  } catch (error) {
+    showAlert('teacherAlert', error.message, 'danger');
+  }
+}
+
+// --- تحميل أسماء الكتب ---
+async function loadBookNames() {
+  try {
+    const response = await fetch(`${API_BASE}/teacher/book-names`, {
+      headers: getAuthHeaders()
+    });
+    const data = await response.json();
+    if (response.ok) {
+      const select = document.getElementById('oldBookName');
+      if (select) {
+        select.innerHTML = '<option value="">-- اختر كتاباً --</option>' +
+          data.bookNames.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+      }
+    }
+  } catch (error) {
+    console.error('Error loading book names:', error);
+  }
+}
+
+// --- تعديل اسم كتاب ---
+async function handleRenameBook(e) {
+  e.preventDefault();
+  const oldName = document.getElementById('oldBookName').value;
+  const newName = document.getElementById('newBookName').value.trim();
+
+  if (!oldName || !newName) {
+    showAlert('teacherAlert', 'يرجى اختيار الكتاب وإدخال الاسم الجديد', 'danger');
+    return;
+  }
+
+  if (!confirm(`هل أنت متأكد من تغيير اسم الكتاب من "${oldName}" إلى "${newName}"؟`)) {
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE}/teacher/rename-book`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ oldName, newName })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
+
+    showAlert('teacherAlert', data.message, 'success');
+    document.getElementById('renameBookForm').reset();
     loadDashboardData();
   } catch (error) {
     showAlert('teacherAlert', error.message, 'danger');

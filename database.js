@@ -673,6 +673,40 @@ async function getAllTeachers() {
   return teachers.map(({ password, ...user }) => mapUserKeys(user));
 }
 
+// جلب أسماء الكتب الفريدة
+async function getUniqueBookNames() {
+  const { data: assignments, error } = await supabase
+    .from('assignments')
+    .select('book_name');
+
+  if (error || !assignments) return [];
+
+  const uniqueNames = [...new Set(assignments.map(a => a.book_name))];
+  return uniqueNames.sort();
+}
+
+// تعديل اسم كتاب (تحديث جميع الأوراد بالاسم القديم)
+async function renameBook(oldName, newName) {
+  if (!oldName || !newName || oldName.trim() === '' || newName.trim() === '') {
+    throw new Error('اسم الكتاب القديم والجديد مطلوبان');
+  }
+
+  if (oldName.trim() === newName.trim()) {
+    throw new Error('الاسم الجديد مطابق للاسم القديم');
+  }
+
+  const { data, error } = await supabase
+    .from('assignments')
+    .update({ book_name: newName.trim() })
+    .eq('book_name', oldName.trim())
+    .select();
+
+  if (error) throw new Error('حدث خطأ أثناء تعديل اسم الكتاب');
+  if (!data || data.length === 0) throw new Error('لم يتم العثور على أوراد بهذا الاسم');
+
+  return { oldName: oldName.trim(), newName: newName.trim(), updatedCount: data.length };
+}
+
 module.exports = {
   registerStudent,
   createTeacher,
@@ -695,5 +729,7 @@ module.exports = {
   getStatistics,
   deleteUser,
   deleteAssignment,
-  getAllTeachers
+  getAllTeachers,
+  getUniqueBookNames,
+  renameBook
 };

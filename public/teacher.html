@@ -129,6 +129,24 @@
             </div>
           </form>
         </div>
+
+        <!-- تعديل أسماء الكتب -->
+        <div class="card">
+          <h3 class="card-title">تعديل أسماء الكتب ✏️</h3>
+          <form id="renameBookForm" onsubmit="handleRenameBook(event)">
+            <div class="form-group">
+              <label for="oldBookName">اختر الكتاب</label>
+              <select id="oldBookName" class="form-control" required>
+                <option value="">-- اختر كتاباً --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="newBookName">الاسم الجديد</label>
+              <input type="text" id="newBookName" class="form-control" placeholder="أدخل الاسم الجديد للكتاب" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent), #F59E0B);">✏️ تعديل الاسم</button>
+          </form>
+        </div>
       </aside>
 
       <!-- Main Contents -->

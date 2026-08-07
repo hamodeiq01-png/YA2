@@ -297,6 +297,35 @@ app.get('/api/teacher/all-teachers', authenticateToken, requireTeacher, async (r
   }
 });
 
+// جلب أسماء الكتب الفريدة
+app.get('/api/teacher/book-names', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const bookNames = await db.getUniqueBookNames();
+    res.json({ bookNames });
+  } catch (error) {
+    res.status(500).json({ error: 'حدث خطأ في جلب أسماء الكتب' });
+  }
+});
+
+// تعديل اسم كتاب
+app.put('/api/teacher/rename-book', authenticateToken, requireTeacher, async (req, res) => {
+  const { oldName, newName } = req.body;
+
+  if (!oldName || !newName) {
+    return res.status(400).json({ error: 'اسم الكتاب القديم والجديد مطلوبان' });
+  }
+
+  try {
+    const result = await db.renameBook(oldName, newName);
+    res.json({
+      message: `تم تغيير اسم الكتاب من "${result.oldName}" إلى "${result.newName}" بنجاح (${result.updatedCount} ورد تم تحديثه)`,
+      result
+    });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 // --- STUDENT APIS ---
 
 // Get Today's Assignments for Student (supports multiple + 2-day deadline)
