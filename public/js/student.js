@@ -69,6 +69,25 @@ async function loadStudentPoints() {
   }
 }
 
+// --- تجميع الأوراد حسب اسم الكتاب ---
+function groupAssignmentsByBook(assignments) {
+  const groups = {};
+  assignments.forEach(item => {
+    const bookName = item.assignment.bookName;
+    if (!groups[bookName]) {
+      groups[bookName] = [];
+    }
+    groups[bookName].push(item);
+  });
+  return groups;
+}
+
+// --- أيقونات الكتب المتنوعة ---
+function getBookIcon(index) {
+  const icons = ['📗', '📘', '📕', '📙', '📓', '📔'];
+  return icons[index % icons.length];
+}
+
 async function loadTodayAssignments() {
   const container = document.getElementById('assignmentsContainer');
 
@@ -89,124 +108,158 @@ async function loadTodayAssignments() {
         return;
       }
 
-      container.innerHTML = data.assignments.map((item, index) => {
-        const assign = item.assignment;
-        const sub = item.submission;
+      // تجميع حسب الكتاب
+      const bookGroups = groupAssignmentsByBook(data.assignments);
+      const bookNames = Object.keys(bookGroups);
 
-        // حساب الفرق بالأيام
-        const todayStr = new Date().toLocaleDateString('sv');
-        const today = new Date(todayStr);
-        const target = new Date(assign.targetDate);
-        const diffDays = Math.floor((today - target) / (1000 * 60 * 60 * 24));
+      let html = '<div class="books-grid">';
+      let globalIndex = 0;
 
-        // تحديد نوع الورد
-        let assignType = 'today'; // اليوم
-        let borderColor = 'var(--primary)';
-        let pointsBadge = '<span class="badge badge-success">✨ 10 نقاط عند الإنجاز</span>';
-
-        if (diffDays === 1) {
-          assignType = 'late';
-          borderColor = '#f59e0b';
-          pointsBadge = '<span class="badge badge-warning">⏰ تسليم متأخر (5 نقاط بدلاً من 10)</span>';
-        } else if (diffDays >= 2) {
-          assignType = 'missed';
-          borderColor = '#ef4444';
-          pointsBadge = '<span class="badge badge-missed">📛 ورد فائت - بدون نقاط</span>';
-        }
-
-        let html = `
-          <div class="assignment-block ${assignType === 'missed' ? 'assignment-missed' : ''}" style="padding: 16px; background: var(--surface); border-radius: 12px; margin-bottom: 16px; border-right: 4px solid ${borderColor};">`;
-
-        // تنبيه خاص للأوراد الفائتة
-        if (assignType === 'missed' && !sub) {
-          html += `
-            <div class="missed-alert">
-              <div class="missed-alert-icon">📛</div>
-              <div class="missed-alert-text">
-                <strong>ورد فائت</strong> - يمكنك إنجازه لكن بدون نقاط
-              </div>
-            </div>`;
-        }
+      bookNames.forEach((bookName, bookIndex) => {
+        const bookAssignments = bookGroups[bookName];
+        const icon = getBookIcon(bookIndex);
+        const assignmentCount = bookAssignments.length;
+        const countText = assignmentCount === 1 ? 'ورد واحد' : `${assignmentCount} أوراد`;
 
         html += `
-            <div style="font-size: 1.2rem; font-weight: 800; color: var(--primary); margin-bottom: 8px;">
-              📖 كتاب: ${escapeHtml(assign.bookName)}
-            </div>
-            <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 12px; flex-wrap: wrap;">
-              <div style="font-size: 1rem; font-weight: 700; color: var(--accent);">
-                صفحات الورد: من ${assign.startPage} إلى ${assign.endPage}
+          <div class="book-card">
+            <div class="book-card-header">
+              <div class="book-card-icon">${icon}</div>
+              <div class="book-card-title">
+                <h3>${escapeHtml(bookName)}</h3>
+                <div class="book-assignments-count">${countText} مطلوبة</div>
               </div>
-              <span class="user-badge" style="background-color: var(--primary-glow);">
+            </div>
+            <div class="book-card-body">`;
+
+        bookAssignments.forEach((item, itemIndex) => {
+          const assign = item.assignment;
+          const sub = item.submission;
+          const currentIndex = globalIndex++;
+
+          // حساب الفرق بالأيام
+          const todayStr = new Date().toLocaleDateString('sv');
+          const today = new Date(todayStr);
+          const target = new Date(assign.targetDate);
+          const diffDays = Math.floor((today - target) / (1000 * 60 * 60 * 24));
+
+          // تحديد نوع الورد
+          let assignType = 'today';
+          let typeClass = '';
+          let pointsBadge = '<span class="badge badge-success">✨ 10 نقاط عند الإنجاز</span>';
+
+          if (diffDays === 1) {
+            assignType = 'late';
+            typeClass = 'assignment-type-late';
+            pointsBadge = '<span class="badge badge-warning">⏰ تسليم متأخر (5 نقاط بدلاً من 10)</span>';
+          } else if (diffDays >= 2) {
+            assignType = 'missed';
+            typeClass = 'assignment-type-missed';
+            pointsBadge = '<span class="badge badge-missed">📛 ورد فائت - بدون نقاط</span>';
+          }
+
+          html += `<div class="book-assignment-item ${typeClass}">`;
+
+          // تنبيه الورد الفائت
+          if (assignType === 'missed' && !sub) {
+            html += `
+              <div class="missed-alert">
+                <div class="missed-alert-icon">📛</div>
+                <div class="missed-alert-text">
+                  <strong>ورد فائت</strong> - يمكنك إنجازه لكن بدون نقاط
+                </div>
+              </div>`;
+          }
+
+          // معلومات الورد (الصفحات والتاريخ)
+          html += `
+            <div class="book-assignment-meta">
+              <div class="book-assignment-pages">
+                📄 صفحات الورد: من ${assign.startPage} إلى ${assign.endPage}
+              </div>
+              <div class="book-assignment-date">
                 مجدول لتاريخ: ${assign.targetDate}
-              </span>
+              </div>
               ${pointsBadge}
             </div>`;
 
-        if (sub) {
-          // Already submitted
-          let subDetails = '';
-          if (sub.questions) {
-            subDetails += `
-              <div class="detail-box">
-                <div class="detail-box-title">❓ سؤالك المرسل:</div>
-                <div>${escapeHtml(sub.questions)}</div>
+          if (sub) {
+            // تم التسليم
+            let subDetails = '';
+            if (sub.questions) {
+              subDetails += `
+                <div class="detail-box">
+                  <div class="detail-box-title">❓ سؤالك المرسل:</div>
+                  <div>${escapeHtml(sub.questions)}</div>
+                </div>`;
+            }
+            if (sub.freeSpace) {
+              subDetails += `
+                <div class="detail-box">
+                  <div class="detail-box-title">📝 مساحتك الحرة / تلخيصك:</div>
+                  <div>${escapeHtml(sub.freeSpace)}</div>
+                </div>`;
+            }
+
+            html += `
+              <div class="book-submission-success">
+                <h4>
+                  ✓ تم إرسال إنجاز هذا الورد بنجاح!
+                </h4>
+                <p style="font-size: 0.9rem; color: var(--text-main);">
+                  لقد أرسلت إنجازك للمعلم، بارك الله في همتك.
+                  ${sub.pointsAwarded > 0 ? `<span class="points-badge" style="margin-right: 8px;">+${sub.pointsAwarded} ⭐</span>` : '<span class="badge badge-missed" style="margin-right: 8px;">بدون نقاط</span>'}
+                  ${sub.isLate ? '<span class="badge badge-warning" style="margin-right: 4px;">متأخر</span>' : ''}
+                </p>
+                ${subDetails}
+              </div>`;
+          } else {
+            // فورم التسليم
+            const submitBtnText = assignType === 'missed'
+              ? 'إرسال الإنجاز (بدون نقاط)'
+              : 'إرسال الإنجاز للمعلم';
+            const submitBtnStyle = assignType === 'missed'
+              ? 'style="background: linear-gradient(135deg, #6B7280, #9CA3AF);"'
+              : '';
+
+            html += `
+              <div class="book-form-section">
+                <h4>✍️ تسجيل إنجازك</h4>
+                <form onsubmit="handleSubmitProgress(event, '${assign.id}', ${currentIndex})">
+                  <div class="form-group">
+                    <label class="checkbox-label">
+                      <input type="checkbox" id="isCompleted_${currentIndex}">
+                      <span>أؤكد أنني قرأت هذا الورد كاملاً وبتركيز.</span>
+                    </label>
+                  </div>
+                  <div class="form-group">
+                    <label>❓ هل لديك أسئلة حول ما قرأت؟ (اختياري)</label>
+                    <textarea id="questions_${currentIndex}" class="form-control" placeholder="اكتب سؤالك هنا..."></textarea>
+                  </div>
+                  <div class="form-group">
+                    <label>📝 مساحة حرة (تلخيص، خواطر) (اختياري)</label>
+                    <textarea id="freeSpace_${currentIndex}" class="form-control" placeholder="اكتب ما يجول في خاطرك..."></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-primary" ${submitBtnStyle}>${submitBtnText}</button>
+                </form>
               </div>`;
           }
-          if (sub.freeSpace) {
-            subDetails += `
-              <div class="detail-box">
-                <div class="detail-box-title">📝 مساحتك الحرة / تلخيصك:</div>
-                <div>${escapeHtml(sub.freeSpace)}</div>
-              </div>`;
+
+          html += '</div>'; // end book-assignment-item
+
+          // فاصل بين الأوراد (ما عدا الأخير)
+          if (itemIndex < bookAssignments.length - 1) {
+            html += '<div class="book-assignment-divider"></div>';
           }
+        });
 
-          html += `
-            <div style="background-color: rgba(16, 185, 129, 0.08); border: 1.5px solid var(--success); border-radius: 8px; padding: 16px; margin-top: 8px;">
-              <h4 style="color: var(--success); font-weight: 800; display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-                ✓ تم إرسال إنجاز هذا الورد بنجاح!
-              </h4>
-              <p style="font-size: 0.9rem; color: var(--text-main);">
-                لقد أرسلت إنجازك للمعلم، بارك الله في همتك.
-                ${sub.pointsAwarded > 0 ? `<span class="points-badge" style="margin-right: 8px;">+${sub.pointsAwarded} ⭐</span>` : '<span class="badge badge-missed" style="margin-right: 8px;">بدون نقاط</span>'}
-                ${sub.isLate ? '<span class="badge badge-warning" style="margin-right: 4px;">متأخر</span>' : ''}
-              </p>
-              ${subDetails}
-            </div>`;
-        } else {
-          // Show submission form
-          const submitBtnText = assignType === 'missed'
-            ? 'إرسال الإنجاز (بدون نقاط)'
-            : 'إرسال الإنجاز للمعلم';
-          const submitBtnStyle = assignType === 'missed'
-            ? 'style="background: linear-gradient(135deg, #6B7280, #9CA3AF);"'
-            : '';
+        html += `
+            </div>
+          </div>`;
+      });
 
-          html += `
-            <div style="border-top: 1px solid var(--border); padding-top: 12px; margin-top: 8px;">
-              <h4 style="font-weight: 700; margin-bottom: 10px; color: var(--text-primary);">✍️ تسجيل إنجازك</h4>
-              <form onsubmit="handleSubmitProgress(event, '${assign.id}', ${index})">
-                <div class="form-group">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="isCompleted_${index}">
-                    <span>أؤكد أنني قرأت هذا الورد كاملاً وبتركيز.</span>
-                  </label>
-                </div>
-                <div class="form-group">
-                  <label>هل لديك أسئلة حول ما قرأت؟ (اختياري)</label>
-                  <textarea id="questions_${index}" class="form-control" placeholder="اكتب سؤالك هنا..."></textarea>
-                </div>
-                <div class="form-group">
-                  <label>مساحة حرة (تلخيص، خواطر) (اختياري)</label>
-                  <textarea id="freeSpace_${index}" class="form-control" placeholder="اكتب ما يجول في خاطرك..."></textarea>
-                </div>
-                <button type="submit" class="btn btn-primary" ${submitBtnStyle}>${submitBtnText}</button>
-              </form>
-            </div>`;
-        }
-
-        html += '</div>';
-        return html;
-      }).join('');
+      html += '</div>';
+      container.innerHTML = html;
     }
   } catch (error) {
     console.error('Error loading today\'s assignments:', error);
@@ -246,8 +299,21 @@ async function handleSubmitProgress(e, assignmentId, index) {
   }
 }
 
+// --- تجميع السجل حسب الكتاب ---
+function groupHistoryByBook(historyItems) {
+  const groups = {};
+  historyItems.forEach(item => {
+    const bookName = item.bookName;
+    if (!groups[bookName]) {
+      groups[bookName] = [];
+    }
+    groups[bookName].push(item);
+  });
+  return groups;
+}
+
 async function loadHistory() {
-  const historyEl = document.getElementById('historyList');
+  const historyContainer = document.getElementById('historyContainer');
   try {
     const response = await fetch(`${API_BASE}/student/assignments/history`, {
       headers: getAuthHeaders()
@@ -256,46 +322,81 @@ async function loadHistory() {
 
     if (response.ok) {
       if (data.history.length === 0) {
-        historyEl.innerHTML = `
-          <tr>
-            <td colspan="5" class="empty-state">
-              لا توجد أوراد سابقة مسجلة.
-            </td>
-          </tr>`;
+        historyContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-icon">📚</div>
+            لا توجد أوراد سابقة مسجلة.
+          </div>`;
         return;
       }
 
-      historyEl.innerHTML = data.history.map(item => {
-        let statusBadge = '';
-        if (item.submittedAt) {
-          statusBadge = item.isCompleted 
-            ? '<span class="badge badge-success">تم الإنجاز ✓</span>'
-            : '<span class="badge badge-danger">لم ينجز ✗</span>';
-          if (item.isLate && item.isCompleted) {
-            statusBadge += ' <span class="badge badge-warning">متأخر</span>';
+      // تجميع حسب الكتاب
+      const bookGroups = groupHistoryByBook(data.history);
+      const bookNames = Object.keys(bookGroups);
+
+      let html = '';
+
+      bookNames.forEach((bookName, bookIndex) => {
+        const bookItems = bookGroups[bookName];
+        const icon = getBookIcon(bookIndex);
+
+        html += `
+          <div class="history-book-group">
+            <div class="history-book-header">
+              <span class="book-icon">${icon}</span>
+              <span class="book-name">${escapeHtml(bookName)}</span>
+              <span class="book-count">${bookItems.length} ورد</span>
+            </div>
+            <div class="table-responsive">
+              <table style="font-size: 0.9rem;">
+                <thead>
+                  <tr>
+                    <th>الصفحات</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>النقاط</th>
+                  </tr>
+                </thead>
+                <tbody>`;
+
+        bookItems.forEach(item => {
+          let statusBadge = '';
+          if (item.submittedAt) {
+            statusBadge = item.isCompleted
+              ? '<span class="badge badge-success">تم الإنجاز ✓</span>'
+              : '<span class="badge badge-danger">لم ينجز ✗</span>';
+            if (item.isLate && item.isCompleted) {
+              statusBadge += ' <span class="badge badge-warning">متأخر</span>';
+            }
+          } else {
+            statusBadge = '<span class="badge badge-danger" style="background-color: #F3F4F6; color: #9CA3AF;">لم يسجل</span>';
           }
-        } else {
-          statusBadge = '<span class="badge badge-danger" style="background-color: #F3F4F6; color: #9CA3AF;">لم يسجل</span>';
-        }
 
-        // النقاط
-        let pointsDisplay = '';
-        if (item.pointsAwarded > 0) {
-          pointsDisplay = `<span class="points-badge-sm">+${item.pointsAwarded} ⭐</span>`;
-        } else {
-          pointsDisplay = '<span style="color: var(--text-muted);">-</span>';
-        }
+          // النقاط
+          let pointsDisplay = '';
+          if (item.pointsAwarded > 0) {
+            pointsDisplay = `<span class="points-badge-sm">+${item.pointsAwarded} ⭐</span>`;
+          } else {
+            pointsDisplay = '<span style="color: var(--text-muted);">-</span>';
+          }
 
-        return `
-          <tr>
-            <td style="font-weight: 700; color: var(--primary);">${escapeHtml(item.bookName)}</td>
-            <td>${item.startPage} - ${item.endPage}</td>
-            <td style="font-size: 0.8rem; color: var(--text-muted);">${item.targetDate}</td>
-            <td>${statusBadge}</td>
-            <td>${pointsDisplay}</td>
-          </tr>
-        `;
-      }).join('');
+          html += `
+                  <tr>
+                    <td>${item.startPage} - ${item.endPage}</td>
+                    <td style="font-size: 0.8rem; color: var(--text-muted);">${item.targetDate}</td>
+                    <td>${statusBadge}</td>
+                    <td>${pointsDisplay}</td>
+                  </tr>`;
+        });
+
+        html += `
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+      });
+
+      historyContainer.innerHTML = html;
     }
   } catch (error) {
     console.error('Error loading student history:', error);

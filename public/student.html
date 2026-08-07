@@ -45,10 +45,10 @@
       </div>
     </div>
 
-    <div class="dashboard-grid">
-      <!-- Today's Assignments & Submissions -->
+    <div style="margin-top: 24px;">
+      <!-- Today's Assignments grouped by Book -->
       <section>
-        <div class="card" id="todayAssignmentsCard">
+        <div class="card">
           <h3 class="card-title">أوراد القراءة المطلوبة 📖</h3>
           <div id="assignmentsContainer">
             <div class="empty-state">
@@ -59,32 +59,17 @@
         </div>
       </section>
 
-      <!-- History of Assignments -->
-      <aside>
+      <!-- History of Assignments grouped by Book -->
+      <section style="margin-top: 24px;">
         <div class="card">
           <h3 class="card-title">سجل قراءاتك السابقة 📚</h3>
-          <div class="table-responsive">
-            <table style="font-size: 0.9rem;">
-              <thead>
-                <tr>
-                  <th>الكتاب</th>
-                  <th>الصفحات</th>
-                  <th>التاريخ</th>
-                  <th>الحالة</th>
-                  <th>النقاط</th>
-                </tr>
-              </thead>
-              <tbody id="historyList">
-                <tr>
-                  <td colspan="5" class="empty-state">
-                    لا توجد أوراد سابقة مسجلة.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <div id="historyContainer">
+            <div class="empty-state">
+              لا توجد أوراد سابقة مسجلة.
+            </div>
           </div>
         </div>
-      </aside>
+      </section>
     </div>
   </main>
 
