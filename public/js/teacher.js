@@ -757,12 +757,16 @@ function previewBookImage(input) {
 }
 
 // --- تعيين صورة كتاب ---
-async function handleSetBookImage(e) {
-  e.preventDefault();
+async function handleSetBookImage() {
   const bookName = document.getElementById('imageBookName').value;
 
-  if (!bookName || !currentBookImageBase64) {
-    showAlert('teacherAlert', 'يرجى اختيار الكتاب واختيار صورة من الألبوم', 'danger');
+  if (!bookName) {
+    showAlert('teacherAlert', 'يرجى اختيار الكتاب أولاً', 'danger');
+    return;
+  }
+
+  if (!currentBookImageBase64) {
+    showAlert('teacherAlert', 'يرجى اختيار صورة من الألبوم أولاً', 'danger');
     return;
   }
 
@@ -776,7 +780,9 @@ async function handleSetBookImage(e) {
     if (!response.ok) throw new Error(data.error);
 
     showAlert('teacherAlert', data.message, 'success');
-    document.getElementById('bookImageForm').reset();
+    // تنظيف الحقول
+    document.getElementById('imageBookName').value = '';
+    document.getElementById('bookImageFile').value = '';
     document.getElementById('bookImagePreview').style.display = 'none';
     document.getElementById('fileUploadText').textContent = 'اضغط لاختيار صورة من الألبوم';
     document.getElementById('fileUploadArea').classList.remove('file-upload-has-file');
