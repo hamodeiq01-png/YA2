@@ -66,6 +66,11 @@
         <span class="teacher-tab-icon">👥</span>
         <span class="teacher-tab-text">الحسابات</span>
       </button>
+      <button class="teacher-tab" data-tab="messages" onclick="switchTab('messages')">
+        <span class="teacher-tab-icon">💬</span>
+        <span class="teacher-tab-text">الرسائل والمحادثات</span>
+        <span id="unreadMessagesBadgeCount" class="badge-count" style="display:none; background:#EF4444; color:#fff; font-size:0.75rem; padding:2px 7px; border-radius:50px; margin-right:4px;">0</span>
+      </button>
       <button class="teacher-tab" data-tab="feedback" onclick="switchTab('feedback')">
         <span class="teacher-tab-icon">💡</span>
         <span class="teacher-tab-text">الاقتراحات والملاحظات</span>
@@ -361,6 +366,83 @@
               <img id="bookImagePreviewImg" src="" alt="معاينة" style="max-width: 100%; max-height: 180px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
             </div>
             <button type="button" onclick="handleSetBookImage()" class="btn btn-primary" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);">🖼️ تعيين الصورة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==================== تبويب: الرسائل والمحادثات ==================== -->
+    <div class="teacher-tab-content" id="tab-messages">
+      <div class="card" style="padding: 18px 24px; margin-bottom: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+              <span>💬 المحادثات والرسائل المباشرة مع الطلاب</span>
+              <span id="unreadMessagesHeaderBadge" class="user-badge" style="background: rgba(239, 68, 68, 0.15); color: #EF4444; font-size: 0.85rem; display:none;">0 رسائل جديدة</span>
+            </h3>
+            <p style="margin: 6px 0 0; color: var(--text-muted); font-size: 0.88rem;">
+              تواصل مباشرة مع طلابك، أرسل التوجيهات الفردية والملاحظات، ورد على استفساراتهم لحظياً.
+            </p>
+          </div>
+          <button onclick="loadTeacherConversations()" class="btn btn-secondary" style="width: auto; padding: 8px 16px; font-size: 0.88rem;">
+            🔄 تحديث المحادثات
+          </button>
+        </div>
+      </div>
+
+      <div class="chat-container" id="teacherChatContainer">
+        <!-- القائمة الجانبية للمحادثات -->
+        <div class="chat-sidebar">
+          <div class="chat-sidebar-header">
+            <input type="text" id="chatContactSearch" class="chat-search-input" placeholder="🔍 ابحث عن طالب..." oninput="filterChatContacts()">
+          </div>
+          <div class="chat-contacts-list" id="chatContactsList">
+            <div class="empty-state" style="padding: 20px;">جاري تحميل المحادثات...</div>
+          </div>
+        </div>
+
+        <!-- الشات النشط -->
+        <div class="chat-main" id="chatMainArea">
+          <div class="chat-main-empty" id="chatMainEmpty">
+            <div style="font-size: 3.5rem; margin-bottom: 12px;">💬</div>
+            <h3 style="margin-bottom: 8px; color: var(--text-main);">اختر طالباً لبدء المحادثة</h3>
+            <p style="color: var(--text-muted); max-width: 380px;">اختر أي طالب من القائمة الجانبية لإرسال رسائل أو توجيهات فورية له.</p>
+          </div>
+
+          <div class="chat-main-active" id="chatMainActive" style="display: none; flex-direction: column; height: 100%;">
+            <!-- رأس المحادثة -->
+            <div class="chat-main-header">
+              <div class="chat-header-user">
+                <button class="chat-back-btn" onclick="closeActiveChatMobile()" title="رجوع للقائمة">←</button>
+                <div class="chat-contact-avatar" id="activeChatAvatar">ط</div>
+                <div>
+                  <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);" id="activeChatName">اسم الطالب</div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);" id="activeChatRole">طالب</div>
+                </div>
+              </div>
+              <div id="activeChatExtra"></div>
+            </div>
+
+            <!-- سجل الرسائل -->
+            <div class="chat-messages-body" id="chatMessagesBody">
+              <div class="empty-state">جاري تحميل الرسائل...</div>
+            </div>
+
+            <!-- كتابة الرسالة -->
+            <div class="chat-footer">
+              <div class="chat-quick-replies">
+                <button type="button" class="chat-quick-chip" onclick="insertQuickReply('أحسنت يا بطل، واصل تميزك! 🌟')">🌟 أحسنت يا بطل</button>
+                <button type="button" class="chat-quick-chip" onclick="insertQuickReply('تذكير بقراءة ورد اليوم بارك الله فيك 📖')">📖 تذكير بالورد</button>
+                <button type="button" class="chat-quick-chip" onclick="insertQuickReply('تم الاطلاع وتصحيح النقاط بنجاح ✨')">✨ تم التصحيح</button>
+                <button type="button" class="chat-quick-chip" onclick="insertQuickReply('ما شاء الله، همة عالية مباركة! 👏')">👏 همة مباركة</button>
+              </div>
+              <form id="chatSendForm" onsubmit="handleSendTeacherMessage(event)" class="chat-input-row">
+                <textarea id="chatMessageInput" class="chat-textarea" placeholder="اكتب رسالتك للطالب هنا... (اضغط Enter للإرسال)" rows="1" onkeydown="handleChatInputKeydown(event)"></textarea>
+                <button type="submit" id="btnSendChat" class="btn-chat-send">
+                  <span>إرسال</span> <span>🚀</span>
+                </button>
+              </form>
+            </div>
           </div>
         </div>
       </div>

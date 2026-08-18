@@ -918,6 +918,181 @@ async function deleteFeedback(id) {
   return { success: true };
 }
 
+// ==========================================
+// --- نظام المراسلة والمحادثات المباشرة ---
+// ==========================================
+
+function mapMessageKeys(msg) {
+  if (!msg) return null;
+  return {
+    id: msg.id.toString(),
+    senderId: msg.sender_id.toString(),
+    receiverId: msg.receiver_id.toString(),
+    content: msg.content,
+    isRead: Boolean(msg.is_read),
+    createdAt: msg.created_at
+  };
+}
+
+// إرسال رسالة
+async function sendMessage(senderId, receiverId, content) {
+  if (!content || !content.trim()) {
+    throw new Error('نص الرسالة مطلوب');
+  }
+  if (!receiverId) {
+    throw new Error('المستلم مطلوب');
+  }
+  if (senderId.toString() === receiverId.toString()) {
+    throw new Error('لا يمكن إرسال رسالة لنفسك');
+  }
+
+  // التأكد من وجود المستلم
+  const { data: receiver, error: recErr } = await supabase
+    .from('users')
+    .select('id, full_name, role')
+    .eq('id', receiverId)
+    .single();
+
+  if (recErr || !receiver) {
+    throw new Error('المستخدم المستلم غير موجود');
+  }
+
+  const { data, error } = await supabase
+    .from('messages')
+    .insert([{
+      sender_id: senderId.toString(),
+      receiver_id: receiverId.toString(),
+      content: content.trim(),
+      is_read: false
+    }])
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Supabase sendMessage error:', error);
+    throw new Error('حدث خطأ أثناء إرسال الرسالة');
+  }
+
+  return mapMessageKeys(data);
+}
+
+// جلب سجل المحادثة بين مستخدمين
+async function getChatMessages(userId1, userId2) {
+  const u1 = userId1.toString();
+  const u2 = userId2.toString();
+
+  const { data, error } = await supabase
+    .from('messages')
+    .select('*')
+    .or(`and(sender_id.eq.${u1},receiver_id.eq.${u2}),and(sender_id.eq.${u2},receiver_id.eq.${u1})`)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    console.error('Supabase getChatMessages error:', error);
+    return [];
+  }
+
+  return (data || []).map(mapMessageKeys);
+}
+
+// تحديد رسائل محادثة معينة كمقروءة
+async function markChatAsRead(currentUserId, otherUserId) {
+  const cUser = currentUserId.toString();
+  const oUser = otherUserId.toString();
+
+  const { error } = await supabase
+    .from('messages')
+    .update({ is_read: true })
+    .eq('receiver_id', cUser)
+    .eq('sender_id', oUser)
+    .eq('is_read', false);
+
+  if (error) {
+    console.error('Supabase markChatAsRead error:', error);
+  }
+  return { success: true };
+}
+
+// جلب عدد الرسائل غير المقروءة لمستخدم
+async function getUnreadMessagesCount(userId) {
+  const uid = userId.toString();
+  const { data, error, count } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact' })
+    .eq('receiver_id', uid)
+    .eq('is_read', false);
+
+  if (error) {
+    return 0;
+  }
+  return typeof count === 'number' ? count : (data ? data.length : 0);
+}
+
+// جلب قائمة المحادثات مع آخر رسالة وعدد غير المقروء
+async function getConversationsList(currentUserId, userRole) {
+  const uid = currentUserId.toString();
+
+  let contacts = [];
+  if (userRole === 'teacher') {
+    // المعلم يرى جميع الطلاب المعتمدين
+    const { data: students } = await supabase
+      .from('users')
+      .select('id, full_name, username, role, points')
+      .eq('is_approved', true)
+      .order('points', { ascending: false });
+    contacts = (students || []).filter(u => u.id.toString() !== uid);
+  } else {
+    // الطالب يرى جميع المعلمين
+    const { data: teachers } = await supabase
+      .from('users')
+      .select('id, full_name, username, role')
+      .eq('role', 'teacher');
+    contacts = teachers || [];
+  }
+
+  // جلب جميع الرسائل المرتبطة بالمستخدم
+  const { data: allMessages } = await supabase
+    .from('messages')
+    .select('*')
+    .or(`sender_id.eq.${uid},receiver_id.eq.${uid}`)
+    .order('created_at', { ascending: false });
+
+  const messagesList = (allMessages || []).map(mapMessageKeys);
+
+  // تجميع المحادثات
+  const conversations = contacts.map(contact => {
+    const contactId = contact.id.toString();
+    const chatMsgs = messagesList.filter(
+      m => (m.senderId === contactId && m.receiverId === uid) || (m.senderId === uid && m.receiverId === contactId)
+    );
+
+    const lastMessage = chatMsgs.length > 0 ? chatMsgs[0] : null;
+    const unreadCount = chatMsgs.filter(m => m.receiverId === uid && !m.isRead).length;
+
+    return {
+      user: {
+        id: contact.id.toString(),
+        fullName: contact.full_name,
+        username: contact.username,
+        role: contact.role,
+        points: contact.points || 0
+      },
+      lastMessage,
+      unreadCount
+    };
+  });
+
+  // ترتيب: المحادثات ذات الرسائل غير المقروءة أولاً، ثم الأحدث
+  conversations.sort((a, b) => {
+    if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
+    if (b.unreadCount > 0 && a.unreadCount === 0) return 1;
+    const timeA = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+    const timeB = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+    return timeB - timeA;
+  });
+
+  return conversations;
+}
 
 module.exports = {
   registerStudent,
@@ -947,7 +1122,13 @@ module.exports = {
   renameBook,
   saveFeedback,
   getFeedbacks,
-  deleteFeedback
+  deleteFeedback,
+  sendMessage,
+  getChatMessages,
+  markChatAsRead,
+  getUnreadMessagesCount,
+  getConversationsList
 };
+
 
 

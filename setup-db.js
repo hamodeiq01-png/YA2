@@ -38,6 +38,27 @@ CREATE POLICY "Allow public delete on feedbacks" ON feedbacks FOR DELETE USING (
 
 GRANT ALL ON TABLE feedbacks TO anon, authenticated, service_role, postgres;
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role, postgres;
+
+-- إضافة جدول الرسائل والمحادثات المتبادلة
+CREATE TABLE IF NOT EXISTS messages (
+  id BIGSERIAL PRIMARY KEY,
+  sender_id TEXT NOT NULL,
+  receiver_id TEXT NOT NULL,
+  content TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_sender_receiver ON messages (sender_id, receiver_id);
+CREATE INDEX IF NOT EXISTS idx_messages_receiver_read ON messages (receiver_id, is_read);
+
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all on messages" ON messages;
+CREATE POLICY "Allow all on messages" ON messages FOR ALL USING (true) WITH CHECK (true);
+
+GRANT ALL ON TABLE messages TO anon, authenticated, service_role, postgres;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role, postgres;
 `;
 
 async function run() {

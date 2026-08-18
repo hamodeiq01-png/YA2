@@ -486,8 +486,68 @@ app.delete('/api/feedback/:id', authenticateToken, requireTeacher, async (req, r
   }
 });
 
+// ==========================================
+// --- مسارات المراسلة والمحادثات المباشرة ---
+// ==========================================
+
+// إرسال رسالة جديدة
+app.post('/api/messages/send', authenticateToken, async (req, res) => {
+  const { receiverId, content } = req.body;
+  if (!receiverId || !content || !content.trim()) {
+    return res.status(400).json({ error: 'المستلم ونص الرسالة مطلوبان' });
+  }
+
+  try {
+    const msg = await db.sendMessage(req.user.id, receiverId, content);
+    res.json({ success: true, message: 'تم إرسال الرسالة بنجاح', data: msg });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'فشل إرسال الرسالة' });
+  }
+});
+
+// جلب قائمة المحادثات
+app.get('/api/messages/conversations', authenticateToken, async (req, res) => {
+  try {
+    const convos = await db.getConversationsList(req.user.id, req.user.role);
+    res.json({ conversations: convos });
+  } catch (err) {
+    res.status(500).json({ error: 'حدث خطأ في جلب المحادثات' });
+  }
+});
+
+// جلب سجل المحادثة مع مستخدم معين
+app.get('/api/messages/chat/:userId', authenticateToken, async (req, res) => {
+  try {
+    const messages = await db.getChatMessages(req.user.id, req.params.userId);
+    res.json({ messages });
+  } catch (err) {
+    res.status(500).json({ error: 'حدث خطأ في جلب سجل المحادثة' });
+  }
+});
+
+// تحديد محادثة كمقروءة
+app.put('/api/messages/mark-read/:userId', authenticateToken, async (req, res) => {
+  try {
+    await db.markChatAsRead(req.user.id, req.params.userId);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'حدث خطأ في تحديث حالة القراءة' });
+  }
+});
+
+// جلب إجمالي عدد الرسائل غير المقروءة
+app.get('/api/messages/unread-count', authenticateToken, async (req, res) => {
+  try {
+    const count = await db.getUnreadMessagesCount(req.user.id);
+    res.json({ unreadCount: count });
+  } catch (err) {
+    res.status(500).json({ error: 'حدث خطأ في جلب عدد الرسائل' });
+  }
+});
+
 // Fallback to serving main html for client routing
 app.get('*', (req, res) => {
+
 
 
   res.sendFile(path.join(__dirname, 'public', 'index.html'));

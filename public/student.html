@@ -20,6 +20,10 @@
         <span>اقرأ | لوحة الطالب</span>
       </a>
       <div class="user-nav-info">
+        <button type="button" class="btn-dev-contact" onclick="openStudentChatModal()" id="btnStudentChatNav" title="تواصل ومحادثة مع المعلم" style="background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.3); color: #2563EB;">
+          <span>💬</span> <span>تواصل مع المعلم</span>
+          <span id="studentUnreadBadge" class="chat-contact-badge" style="display:none; margin-right:4px;">0</span>
+        </button>
         <span class="user-badge" id="studentName">الطالب</span>
         <button onclick="logout()" class="btn btn-secondary" style="width: auto; padding: 8px 16px;">تسجيل الخروج</button>
       </div>
@@ -202,6 +206,56 @@
     </div>
 
   </main>
+
+  <!-- نافذة المحادثة مع المعلم للطالب -->
+  <div id="studentChatModal" class="dev-modal-overlay" onclick="handleStudentChatOverlayClick(event)">
+    <div class="dev-modal-card" style="max-width: 680px; height: 80vh; max-height: 700px; display: flex; flex-direction: column; padding: 0; overflow: hidden;" role="dialog" aria-modal="true">
+      
+      <!-- هيدر المحادثة -->
+      <div class="chat-main-header" style="border-radius: var(--border-radius-lg) var(--border-radius-lg) 0 0;">
+        <div class="chat-header-user">
+          <div class="chat-contact-avatar teacher" id="studentTeacherAvatar">م</div>
+          <div>
+            <div style="font-weight: 700; font-size: 1rem; color: var(--text-main);" id="studentTeacherName">المعلم</div>
+            <div style="font-size: 0.78rem; color: var(--text-muted);">👨‍🏫 معلم المنصة — متصل</div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="refreshStudentActiveChat()">🔄 تحديث</button>
+          <button type="button" class="dev-modal-close-btn" onclick="closeStudentChatModal()" title="إغلاق">✕</button>
+        </div>
+      </div>
+
+      <!-- قائمة اختيار المعلم إذا كان هناك أكثر من معلم -->
+      <div id="studentTeacherSelectorRow" style="padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--border); display: none; align-items: center; gap: 10px;">
+        <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">المعلم:</label>
+        <select id="studentTeacherSelect" class="form-control" style="padding: 4px 10px; font-size: 0.85rem;" onchange="handleStudentTeacherChange(this.value)">
+        </select>
+      </div>
+
+      <!-- سجل الرسائل -->
+      <div class="chat-messages-body" id="studentChatMessagesBody" style="flex: 1;">
+        <div class="empty-state">جاري تحميل الرسائل...</div>
+      </div>
+
+      <!-- الفوتر وكتابة الرسالة -->
+      <div class="chat-footer">
+        <div class="chat-quick-replies">
+          <button type="button" class="chat-quick-chip" onclick="insertStudentQuickReply('السلام عليكم ورحمة الله يا أستاذ 🌸')">🌸 السلام عليكم</button>
+          <button type="button" class="chat-quick-chip" onclick="insertStudentQuickReply('لقد أنهيت ورد اليوم بحمد الله ✨')">✨ أنهيت ورد اليوم</button>
+          <button type="button" class="chat-quick-chip" onclick="insertStudentQuickReply('عندي استفسار عن صفحة معينة في الورد ❓')">❓ استفسار عن الورد</button>
+          <button type="button" class="chat-quick-chip" onclick="insertStudentQuickReply('جزاك الله خيراً وبارك فيك 🤲')">🤲 جزاك الله خيراً</button>
+        </div>
+        <form id="studentChatSendForm" onsubmit="handleSendStudentMessage(event)" class="chat-input-row">
+          <textarea id="studentChatMessageInput" class="chat-textarea" placeholder="اكتب رسالتك أو استفسارك لمعلمك هنا... (اضغط Enter للإرسال)" rows="1" onkeydown="handleStudentChatInputKeydown(event)"></textarea>
+          <button type="submit" id="btnStudentSendChat" class="btn-chat-send">
+            <span>إرسال</span> <span>🚀</span>
+          </button>
+        </form>
+      </div>
+
+    </div>
+  </div>
 
   <!-- Footer -->
   <footer class="student-footer">

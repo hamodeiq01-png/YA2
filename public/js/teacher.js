@@ -29,6 +29,11 @@ function switchTab(tabName) {
     loadTeacherFeedbacks();
   }
 
+  // If messages tab is opened, reload conversations
+  if (tabName === 'messages') {
+    loadTeacherConversations();
+  }
+
   // Save to localStorage
   localStorage.setItem('teacherActiveTab', tabName);
 }
@@ -54,6 +59,14 @@ window.addEventListener('DOMContentLoaded', () => {
   // Initial Load
   loadDashboardData();
 
+  // Polling unread messages count every 15s
+  setInterval(() => {
+    loadUnreadMessagesCount();
+    if (activeChatUserId) {
+      loadActiveChatMessages(activeChatUserId, true);
+    }
+  }, 15000);
+
   // Restore saved tab
   const savedTab = localStorage.getItem('teacherActiveTab');
   if (savedTab) switchTab(savedTab);
@@ -68,6 +81,8 @@ function loadDashboardData() {
   loadStatistics('all');
   loadBookNames();
   loadTeacherFeedbacks();
+  loadUnreadMessagesCount();
+  loadTeacherConversations();
 }
 
 
@@ -103,8 +118,9 @@ function filterStudentsList() {
             <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">@${escapeHtml(student.username)}</span>
           </div>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
           <span class="points-badge">⭐ ${student.points || 0} نقطة</span>
+          <button type="button" class="btn-student-msg" onclick="openStudentChatDirect('${student.id}', '${escapeHtml(student.fullName)}')" title="مراسلة الطالب">💬 مراسلة</button>
           <button onclick="handleDeleteUser('${student.id}', '${escapeHtml(student.fullName)}')" style="background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🗑️ حذف</button>
         </div>
       </div>
@@ -1253,5 +1269,336 @@ function shareFeedbackCardWhatsApp(id) {
 
   const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank');
+}
+
+// ==========================================
+// --- نظام المراسلة والمحادثات المباشرة ---
+// ==========================================
+
+let cachedConversations = [];
+let activeChatUserId = null;
+let activeChatUser = null;
+let activeChatMessages = [];
+
+// جلب إجمالي الرسائل غير المقروءة لتحديث الشارات
+async function loadUnreadMessagesCount() {
+  try {
+    const res = await fetch(`${API_BASE}/messages/unread-count`, {
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    const count = data.unreadCount || 0;
+
+    const badgeEl = document.getElementById('unreadMessagesBadgeCount');
+    const headerBadgeEl = document.getElementById('unreadMessagesHeaderBadge');
+
+    if (badgeEl) {
+      if (count > 0) {
+        badgeEl.textContent = count;
+        badgeEl.style.display = 'inline-block';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
+    if (headerBadgeEl) {
+      if (count > 0) {
+        headerBadgeEl.textContent = `${count} رسالة جديدة`;
+        headerBadgeEl.style.display = 'inline-block';
+      } else {
+        headerBadgeEl.style.display = 'none';
+      }
+    }
+  } catch (e) {
+    console.error('Error fetching unread count:', e);
+  }
+}
+
+// جلب قائمة المحادثات
+async function loadTeacherConversations() {
+  const listContainer = document.getElementById('chatContactsList');
+  if (!listContainer) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/messages/conversations`, {
+      headers: getAuthHeaders()
+    });
+
+    if (!res.ok) {
+      listContainer.innerHTML = '<div class="empty-state">تعذر جلب المحادثات.</div>';
+      return;
+    }
+
+    const data = await res.json();
+    cachedConversations = data.conversations || [];
+    filterChatContacts();
+  } catch (err) {
+    console.error('Error loading conversations:', err);
+    if (listContainer) {
+      listContainer.innerHTML = '<div class="empty-state">حدث خطأ في تحميل المحادثات.</div>';
+    }
+  }
+}
+
+// فلترة وعرض جهات الاتصال في القائمة الجانبية
+function filterChatContacts() {
+  const listContainer = document.getElementById('chatContactsList');
+  if (!listContainer) return;
+
+  const query = (document.getElementById('chatContactSearch')?.value || '').trim().toLowerCase();
+
+  const filtered = cachedConversations.filter(c => {
+    const name = (c.user.fullName || '').toLowerCase();
+    const username = (c.user.username || '').toLowerCase();
+    return name.includes(query) || username.includes(query);
+  });
+
+  if (filtered.length === 0) {
+    listContainer.innerHTML = '<div class="empty-state" style="padding: 20px;">لا يوجد طلاب مطابقين للبحث.</div>';
+    return;
+  }
+
+  listContainer.innerHTML = filtered.map(c => {
+    const isActive = activeChatUserId && activeChatUserId.toString() === c.user.id.toString();
+    const avatarChar = (c.user.fullName || 'ط').trim().charAt(0);
+    const roleClass = c.user.role === 'teacher' ? 'teacher' : '';
+
+    let timeFormatted = '';
+    if (c.lastMessage && c.lastMessage.createdAt) {
+      try {
+        const d = new Date(c.lastMessage.createdAt);
+        timeFormatted = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      } catch (e) {}
+    }
+
+    const snippet = c.lastMessage ? escapeHtml(c.lastMessage.content) : 'انقر لبدء المحادثة...';
+
+    return `
+      <div class="chat-contact-item ${isActive ? 'active' : ''}" onclick="openConversation('${c.user.id}', '${escapeHtml(c.user.fullName)}', '${c.user.role}', '${c.user.points || 0}')">
+        <div class="chat-contact-avatar ${roleClass}">${escapeHtml(avatarChar)}</div>
+        <div class="chat-contact-info">
+          <div class="chat-contact-top">
+            <span class="chat-contact-name">${escapeHtml(c.user.fullName)}</span>
+            <span class="chat-contact-time">${timeFormatted}</span>
+          </div>
+          <div class="chat-contact-bottom">
+            <span class="chat-contact-snippet">${snippet}</span>
+            ${c.unreadCount > 0 ? `<span class="chat-contact-badge">${c.unreadCount}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// فتح محادثة طالب مباشرة من قائمة الطلاب
+function openStudentChatDirect(studentId, studentName) {
+  switchTab('messages');
+  openConversation(studentId, studentName || 'طالب', 'student', 0);
+}
+
+// فتح محادثة
+async function openConversation(userId, userName, userRole, points) {
+  activeChatUserId = userId.toString();
+  activeChatUser = { id: userId, fullName: userName, role: userRole, points };
+
+  // تحديث حالة العرض في الموبايل
+  const container = document.getElementById('teacherChatContainer');
+  if (container) container.classList.add('chat-view-active');
+
+  // تحديث هيدر المحادثة
+  const emptyEl = document.getElementById('chatMainEmpty');
+  const activeEl = document.getElementById('chatMainActive');
+  if (emptyEl) emptyEl.style.display = 'none';
+  if (activeEl) activeEl.style.display = 'flex';
+
+  const nameEl = document.getElementById('activeChatName');
+  const roleEl = document.getElementById('activeChatRole');
+  const avatarEl = document.getElementById('activeChatAvatar');
+  const extraEl = document.getElementById('activeChatExtra');
+
+  if (nameEl) nameEl.textContent = userName;
+  if (roleEl) roleEl.textContent = userRole === 'teacher' ? '👨‍🏫 معلم' : `👨‍🎓 طالب (⭐ ${points || 0} نقطة)`;
+  if (avatarEl) {
+    avatarEl.textContent = (userName || 'م').trim().charAt(0);
+    avatarEl.className = `chat-contact-avatar ${userRole === 'teacher' ? 'teacher' : ''}`;
+  }
+  if (extraEl) {
+    extraEl.innerHTML = `<button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="loadActiveChatMessages('${userId}')">🔄 تحديث</button>`;
+  }
+
+  // تمييز العنصر النشط بالقائمة
+  filterChatContacts();
+
+  // جلب الرسائل وتحديدها كمقروءة
+  await loadActiveChatMessages(userId);
+  markConversationAsRead(userId);
+}
+
+// إغلاق المحادثة النشطة في الهاتف للرجوع للقائمة
+function closeActiveChatMobile() {
+  const container = document.getElementById('teacherChatContainer');
+  if (container) container.classList.remove('chat-view-active');
+}
+
+// جلب سجل المحادثة
+async function loadActiveChatMessages(userId, isBackgroundRefresh = false) {
+  if (!userId || activeChatUserId !== userId.toString()) return;
+
+  const body = document.getElementById('chatMessagesBody');
+  if (!body) return;
+
+  if (!isBackgroundRefresh && activeChatMessages.length === 0) {
+    body.innerHTML = '<div class="empty-state">جاري تحميل الرسائل...</div>';
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/messages/chat/${userId}`, {
+      headers: getAuthHeaders()
+    });
+
+    if (!res.ok) throw new Error('فشل جلب الرسائل');
+
+    const data = await res.json();
+    activeChatMessages = data.messages || [];
+    renderMessages(activeChatMessages);
+  } catch (err) {
+    console.error('Error fetching chat messages:', err);
+    if (!isBackgroundRefresh && body) {
+      body.innerHTML = '<div class="empty-state">تعذر تحميل الرسائل.</div>';
+    }
+  }
+}
+
+// عرض فقاعات الرسائل
+function renderMessages(messages) {
+  const body = document.getElementById('chatMessagesBody');
+  if (!body) return;
+
+  const currentUser = getUser();
+  const currentUserId = currentUser ? currentUser.id.toString() : '';
+
+  if (messages.length === 0) {
+    body.innerHTML = `
+      <div class="empty-state" style="padding: 40px 20px;">
+        <div style="font-size: 2.5rem; margin-bottom: 8px;">✨</div>
+        <div style="font-weight: 700; color: var(--text-main); margin-bottom: 4px;">لا توجد رسائل سابقة</div>
+        <div style="font-size: 0.85rem; color: var(--text-muted);">ابدأ المحادثة الآن وأرسل التوجيهات أو الملاحظات للطالب.</div>
+      </div>
+    `;
+    return;
+  }
+
+  body.innerHTML = messages.map(msg => {
+    const isOutgoing = msg.senderId.toString() === currentUserId;
+    const rowClass = isOutgoing ? 'outgoing' : 'incoming';
+
+    let timeFormatted = '';
+    if (msg.createdAt) {
+      try {
+        const d = new Date(msg.createdAt);
+        timeFormatted = d.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+      } catch (e) {}
+    }
+
+    const readStatusHtml = isOutgoing 
+      ? `<span class="chat-read-status" title="${msg.isRead ? 'تمت القراءة' : 'تم الإرسال'}">${msg.isRead ? '✓✓' : '✓'}</span>` 
+      : '';
+
+    return `
+      <div class="chat-msg-row ${rowClass}">
+        <div class="chat-msg-bubble">${escapeHtml(msg.content)}</div>
+        <div class="chat-msg-meta">
+          <span>${timeFormatted}</span>
+          ${readStatusHtml}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // النزول لأسفل المحادثة تلقائياً
+  body.scrollTop = body.scrollHeight;
+}
+
+// تحديد محادثة كمقروءة
+async function markConversationAsRead(userId) {
+  try {
+    await fetch(`${API_BASE}/messages/mark-read/${userId}`, {
+      method: 'PUT',
+      headers: getAuthHeaders()
+    });
+
+    // تحديث في الكاش المحلي
+    const convo = cachedConversations.find(c => c.user.id.toString() === userId.toString());
+    if (convo) {
+      convo.unreadCount = 0;
+    }
+    filterChatContacts();
+    loadUnreadMessagesCount();
+  } catch (e) {}
+}
+
+// إدخال رد جاهز وسريع
+function insertQuickReply(text) {
+  const input = document.getElementById('chatMessageInput');
+  if (!input) return;
+  input.value = text;
+  input.focus();
+}
+
+// زر Enter للإرسال
+function handleChatInputKeydown(event) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    handleSendTeacherMessage(event);
+  }
+}
+
+// إرسال رسالة المعلم
+async function handleSendTeacherMessage(event) {
+  if (event) event.preventDefault();
+
+  if (!activeChatUserId) return;
+
+  const input = document.getElementById('chatMessageInput');
+  if (!input) return;
+
+  const content = input.value.trim();
+  if (!content) return;
+
+  const sendBtn = document.getElementById('btnSendChat');
+  if (sendBtn) sendBtn.disabled = true;
+
+  try {
+    const res = await fetch(`${API_BASE}/messages/send`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        receiverId: activeChatUserId,
+        content: content
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل إرسال الرسالة');
+
+    input.value = '';
+    input.style.height = 'auto';
+
+    // إضافة الرسالة للمحادثة فوراً
+    if (data.data) {
+      activeChatMessages.push(data.data);
+      renderMessages(activeChatMessages);
+    }
+
+    // تحديث جهات الاتصال لإظهار آخر رسالة
+    loadTeacherConversations();
+  } catch (err) {
+    showAlert('teacherAlert', err.message || 'حدث خطأ أثناء إرسال الرسالة', 'danger');
+  } finally {
+    if (sendBtn) sendBtn.disabled = false;
+    input.focus();
+  }
 }
 
