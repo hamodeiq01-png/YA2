@@ -61,7 +61,9 @@ function loadDashboardData() {
   loadTeachers();
   loadStatistics('all');
   loadBookNames();
+  loadTeacherFeedbacks();
 }
+
 
 // --- تحميل الطلاب والبحث ---
 let cachedStudents = [];
@@ -1005,3 +1007,243 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// ==========================================
+// --- صندوق الاقتراحات والملاحظات للمعلم ---
+// ==========================================
+
+let cachedFeedbacks = [];
+let currentFeedbackFilter = 'all';
+
+async function loadTeacherFeedbacks() {
+  const container = document.getElementById('feedbackListContainer');
+  if (!container) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/feedback`, {
+      headers: getAuthHeaders()
+    });
+
+    if (!res.ok) {
+      container.innerHTML = '<div class="empty-state">لا توجد صلاحية لجلب الملاحظات أو حدث خطأ.</div>';
+      return;
+    }
+
+    const data = await res.json();
+    cachedFeedbacks = Array.isArray(data) ? data : [];
+
+    // تحديث الشارات العداد
+    const badgeEl = document.getElementById('feedbackBadgeCount');
+    const totalBadgeEl = document.getElementById('feedbackTotalBadge');
+    
+    if (badgeEl) {
+      if (cachedFeedbacks.length > 0) {
+        badgeEl.textContent = cachedFeedbacks.length;
+        badgeEl.style.display = 'inline-block';
+      } else {
+        badgeEl.style.display = 'none';
+      }
+    }
+
+    if (totalBadgeEl) {
+      totalBadgeEl.textContent = `${cachedFeedbacks.length} ملاحظة`;
+    }
+
+    filterFeedbackList();
+  } catch (err) {
+    console.error('Error loading feedbacks:', err);
+    if (container) {
+      container.innerHTML = '<div class="empty-state">حدث خطأ في تحميل الاقتراحات.</div>';
+    }
+  }
+}
+
+function setFeedbackFilter(filterType) {
+  currentFeedbackFilter = filterType;
+
+  // تحديث أزرار الفلاتر
+  const filterBtns = document.querySelectorAll('#feedbackFilterButtons .stat-filter-btn');
+  filterBtns.forEach(btn => btn.classList.remove('active'));
+
+  if (filterType === 'all') document.getElementById('fbFilterAll')?.classList.add('active');
+  else if (filterType === 'student') document.getElementById('fbFilterStudents')?.classList.add('active');
+  else if (filterType === 'teacher') document.getElementById('fbFilterTeachers')?.classList.add('active');
+  else if (filterType === 'idea') document.getElementById('fbFilterIdeas')?.classList.add('active');
+  else if (filterType === 'bug') document.getElementById('fbFilterBugs')?.classList.add('active');
+
+  filterFeedbackList();
+}
+
+function filterFeedbackList() {
+  const container = document.getElementById('feedbackListContainer');
+  if (!container) return;
+
+  const query = (document.getElementById('feedbackSearchInput')?.value || '').trim().toLowerCase();
+
+  let filtered = cachedFeedbacks.filter(item => {
+    // تصفية حسب الدور أو النوع
+    if (currentFeedbackFilter === 'student' && item.senderRole !== 'student' && item.senderRole !== 'الطالب') return false;
+    if (currentFeedbackFilter === 'teacher' && item.senderRole !== 'teacher' && item.senderRole !== 'المعلم') return false;
+    if (currentFeedbackFilter === 'idea' && !item.type?.includes('اقتراح') && !item.type?.includes('فكرة')) return false;
+    if (currentFeedbackFilter === 'bug' && !item.type?.includes('مشكلة') && !item.type?.includes('خلل')) return false;
+
+    // بحث نصي
+    if (query) {
+      const matchName = (item.senderName || '').toLowerCase().includes(query);
+      const matchSubject = (item.subject || '').toLowerCase().includes(query);
+      const matchMessage = (item.message || '').toLowerCase().includes(query);
+      const matchType = (item.type || '').toLowerCase().includes(query);
+      if (!matchName && !matchSubject && !matchMessage && !matchType) return false;
+    }
+
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: 40px 20px;">
+        <div class="empty-state-icon">💡</div>
+        <div style="font-size: 1.1rem; font-weight: 700; margin-bottom: 6px;">لا توجد اقتراحات أو ملاحظات مطابقة</div>
+        <div style="color: var(--text-muted); font-size: 0.9rem;">أي اقتراح يرسله الطلاب أو المعلمون سيظهر هنا تلقائياً.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = `<div class="feedback-cards-grid">${filtered.map(item => renderFeedbackCard(item)).join('')}</div>`;
+}
+
+function renderFeedbackCard(item) {
+  const isTeacher = item.senderRole === 'teacher' || item.senderRole === 'المعلم';
+  const roleText = isTeacher ? '👨‍🏫 المعلم' : '👨‍🎓 الطالب';
+  const roleBadgeClass = isTeacher ? 'badge-teacher' : 'badge-student';
+
+  // تحديد صنف النوع
+  let typeClass = 'type-general';
+  let badgeClass = 'badge-general';
+  const itemType = item.type || '💡 اقتراح';
+
+  if (itemType.includes('مشكلة') || itemType.includes('خلل')) {
+    typeClass = 'type-bug';
+    badgeClass = 'badge-bug';
+  } else if (itemType.includes('تحسين') || itemType.includes('تطوير')) {
+    typeClass = 'type-improvement';
+    badgeClass = 'badge-improvement';
+  } else if (itemType.includes('اقتراح') || itemType.includes('فكرة')) {
+    typeClass = 'type-idea';
+    badgeClass = 'badge-idea';
+  }
+
+  // تنسيق التاريخ
+  let dateFormatted = '';
+  if (item.createdAt) {
+    try {
+      const d = new Date(item.createdAt);
+      dateFormatted = d.toLocaleDateString('ar-EG', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      dateFormatted = item.createdAt;
+    }
+  }
+
+  const avatarChar = (item.senderName || 'م').trim().charAt(0);
+
+  return `
+    <div class="feedback-item-card ${typeClass}" id="fb-card-${item.id}">
+      <div class="feedback-item-header">
+        <div class="feedback-item-author">
+          <div class="feedback-author-avatar">${escapeHtml(avatarChar)}</div>
+          <div class="feedback-author-info">
+            <span class="feedback-author-name">${escapeHtml(item.senderName || 'غير معروف')}</span>
+            <span class="feedback-item-date">${dateFormatted}</span>
+          </div>
+        </div>
+
+        <div class="feedback-item-badges">
+          <span class="feedback-type-badge ${badgeClass}">${escapeHtml(itemType)}</span>
+          <span class="feedback-role-badge">${roleText}</span>
+        </div>
+      </div>
+
+      ${item.subject ? `<div class="feedback-item-subject">🏷️ ${escapeHtml(item.subject)}</div>` : ''}
+
+      <div class="feedback-item-body">${escapeHtml(item.message)}</div>
+
+      <div class="feedback-item-footer">
+        <button type="button" class="btn-fb-action btn-fb-whatsapp" onclick="shareFeedbackCardWhatsApp('${item.id}')" title="إرسال عبر واتساب">
+          <span>💬 واتساب</span>
+        </button>
+        <button type="button" class="btn-fb-action btn-fb-copy" onclick="copyFeedbackCardText('${item.id}')" title="نسخ الملاحظة">
+          <span>📋 نسخ</span>
+        </button>
+        <button type="button" class="btn-fb-action btn-fb-delete" onclick="handleDeleteFeedback('${item.id}')" title="حذف الملاحظة">
+          <span>🗑️ حذف</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// حذف ملاحظة
+async function handleDeleteFeedback(id) {
+  if (!confirm('هل أنت متأكد من رغبتك في حذف هذه الملاحظة؟')) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/feedback/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    if (!res.ok) throw new Error('فشل حذف الملاحظة');
+
+    // إزالة من الكاش
+    cachedFeedbacks = cachedFeedbacks.filter(f => f.id !== id);
+
+    // تحديث الشارة
+    const badgeEl = document.getElementById('feedbackBadgeCount');
+    const totalBadgeEl = document.getElementById('feedbackTotalBadge');
+    if (badgeEl) {
+      badgeEl.textContent = cachedFeedbacks.length;
+      if (cachedFeedbacks.length === 0) badgeEl.style.display = 'none';
+    }
+    if (totalBadgeEl) totalBadgeEl.textContent = `${cachedFeedbacks.length} ملاحظة`;
+
+    showAlert('teacherAlert', 'تم حذف الملاحظة بنجاح', 'success');
+    filterFeedbackList();
+  } catch (err) {
+    showAlert('teacherAlert', err.message || 'حدث خطأ في حذف الملاحظة', 'danger');
+  }
+}
+
+// نسخ نص الملاحظة
+function copyFeedbackCardText(id) {
+  const item = cachedFeedbacks.find(f => f.id === id);
+  if (!item) return;
+
+  const text = `📌 *اقتراح/ملاحظة من:* ${item.senderName} (${item.senderRole === 'teacher' ? 'معلم' : 'طالب'})\n🏷️ *النوع:* ${item.type || 'عام'}\n${item.subject ? `📝 *الموضوع:* ${item.subject}\n` : ''}💬 *الرسالة:*\n${item.message}`;
+
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showAlert('teacherAlert', 'تم نسخ الملاحظة بنجاح! 📋', 'success');
+    });
+  } else {
+    showAlert('teacherAlert', 'تم تحديد الملاحظة', 'success');
+  }
+}
+
+// مشاركة ملاحظة في واتساب
+function shareFeedbackCardWhatsApp(id) {
+  const item = cachedFeedbacks.find(f => f.id === id);
+  if (!item) return;
+
+  const text = `*السلام عليكم ورحمة الله* 🌟\n\n📌 *ملاحظة/اقتراح من:* ${item.senderName} (${item.senderRole === 'teacher' ? 'المعلم' : 'الطالب'})\n🏷️ *النوع:* ${item.type || 'عام'}\n${item.subject ? `📝 *الموضوع:* ${item.subject}\n` : ''}🕒 *التاريخ:* ${item.createdAt || ''}\n━━━━━━━━━━━━━━━━━━━━\n💬 *الرسالة:*\n${item.message}`;
+
+  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
+}
+

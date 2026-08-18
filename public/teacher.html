@@ -69,11 +69,17 @@
         <span class="teacher-tab-icon">👥</span>
         <span class="teacher-tab-text">الحسابات</span>
       </button>
+      <button class="teacher-tab" data-tab="feedback" onclick="switchTab('feedback')">
+        <span class="teacher-tab-icon">💡</span>
+        <span class="teacher-tab-text">الاقتراحات والملاحظات</span>
+        <span id="feedbackBadgeCount" class="badge-count" style="display:none; background:#D97706; color:#fff; font-size:0.75rem; padding:2px 7px; border-radius:50px; margin-right:4px;">0</span>
+      </button>
       <button class="teacher-tab" data-tab="settings" onclick="switchTab('settings')">
         <span class="teacher-tab-icon">⚙️</span>
         <span class="teacher-tab-text">الإعدادات</span>
       </button>
     </div>
+
 
     <!-- ==================== تبويب 1: لوحة القيادة ==================== -->
     <div class="teacher-tab-content active" id="tab-dashboard">
@@ -363,7 +369,59 @@
       </div>
     </div>
 
+    <!-- ==================== تبويب 5: الاقتراحات والملاحظات ==================== -->
+    <div class="teacher-tab-content" id="tab-feedback">
+      
+      <!-- هيدر صندوق الاقتراحات -->
+      <div class="card" style="padding: 24px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+          <div>
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 10px;">
+              <span>💡 صندوق الاقتراحات والملاحظات</span>
+              <span id="feedbackTotalBadge" class="user-badge" style="background: rgba(217, 119, 6, 0.15); color: var(--accent); font-size: 0.85rem;">0 ملاحظة</span>
+            </h3>
+            <p style="margin: 6px 0 0; color: var(--text-muted); font-size: 0.9rem;">
+              جميع الاقتراحات، طلبات التحسين، والتبليغات المرسلة من الطلاب والمعلمين للمبرمج والمنصة.
+            </p>
+          </div>
+          
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="loadTeacherFeedbacks()" class="btn btn-secondary" style="width: auto; padding: 8px 16px; font-size: 0.9rem;">
+              🔄 تحديث القائمة
+            </button>
+            <button onclick="openDevContactModal()" class="btn btn-primary" style="width: auto; padding: 8px 16px; font-size: 0.9rem; background: linear-gradient(135deg, var(--accent), #F59E0B);">
+              ✨ إرسال اقتراح جديد
+            </button>
+          </div>
+        </div>
+
+        <!-- فلاتر والبحث -->
+        <div style="display: flex; gap: 12px; margin-top: 20px; flex-wrap: wrap; align-items: center;">
+          <div style="flex: 1; min-width: 220px;">
+            <input type="text" id="feedbackSearchInput" oninput="filterFeedbackList()" placeholder="🔍 ابحث في الاقتراحات أو أسماء المرسلين..." class="form-control">
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;" id="feedbackFilterButtons">
+            <button class="stat-filter-btn active" id="fbFilterAll" onclick="setFeedbackFilter('all')">الكل</button>
+            <button class="stat-filter-btn" id="fbFilterStudents" onclick="setFeedbackFilter('student')">👨‍🎓 الطلاب</button>
+            <button class="stat-filter-btn" id="fbFilterTeachers" onclick="setFeedbackFilter('teacher')">👨‍🏫 المعلمون</button>
+            <button class="stat-filter-btn" id="fbFilterIdeas" onclick="setFeedbackFilter('idea')">💡 أفكار ومقترحات</button>
+            <button class="stat-filter-btn" id="fbFilterBugs" onclick="setFeedbackFilter('bug')">🐛 مشاكل فنية</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- قائمة الملاحظات والاقتراحات -->
+      <div id="feedbackListContainer">
+        <div class="empty-state">
+          <div class="empty-state-icon">⏳</div>
+          جاري تحميل الاقتراحات والملاحظات...
+        </div>
+      </div>
+
+    </div>
+
   </main>
+
 
   <!-- Footer -->
   <footer class="student-footer" style="margin-top: 40px; padding: 20px; text-align: center; border-top: 1px solid var(--border);">

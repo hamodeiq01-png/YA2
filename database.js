@@ -843,6 +843,30 @@ async function getFeedbacks() {
   return [];
 }
 
+// حذف ملاحظة أو اقتراح
+async function deleteFeedback(id) {
+
+  const fs = require('fs');
+  const path = require('path');
+  const feedbacksFilePath = path.join(__dirname, 'feedbacks.json');
+  try {
+    if (fs.existsSync(feedbacksFilePath)) {
+      const fileData = fs.readFileSync(feedbacksFilePath, 'utf8');
+      let list = JSON.parse(fileData || '[]');
+      list = list.filter(item => item.id !== id);
+      fs.writeFileSync(feedbacksFilePath, JSON.stringify(list, null, 2), 'utf8');
+    }
+  } catch (e) {
+    console.error('Error deleting feedback from file:', e);
+  }
+
+  try {
+    await supabase.from('feedbacks').delete().eq('id', id);
+  } catch (e) {}
+
+  return { success: true };
+}
+
 module.exports = {
   registerStudent,
   createTeacher,
@@ -870,6 +894,8 @@ module.exports = {
   setBookImage,
   renameBook,
   saveFeedback,
-  getFeedbacks
+  getFeedbacks,
+  deleteFeedback
 };
+
 

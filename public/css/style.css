@@ -3655,3 +3655,230 @@ textarea.dev-form-control {
   color: #F3F4F6;
 }
 
+/* ==========================================================================
+   TEACHER FEEDBACK VIEWER STYLES
+   ========================================================================== */
+
+.feedback-cards-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.feedback-item-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-right: 4px solid var(--accent);
+  border-radius: 14px;
+  padding: 18px 22px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition-smooth);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feedback-item-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary-light);
+}
+
+.feedback-item-card.type-idea {
+  border-right-color: #D97706;
+}
+
+.feedback-item-card.type-bug {
+  border-right-color: #EF4444;
+}
+
+.feedback-item-card.type-improvement {
+  border-right-color: #3B82F6;
+}
+
+.feedback-item-card.type-general {
+  border-right-color: #10B981;
+}
+
+.feedback-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.feedback-item-author {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feedback-author-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--primary-glow);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.feedback-author-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.feedback-author-name {
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--primary);
+}
+
+.feedback-item-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.feedback-item-badges {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.feedback-type-badge {
+  padding: 4px 12px;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.badge-idea {
+  background: rgba(217, 119, 6, 0.15);
+  color: #D97706;
+}
+
+.badge-bug {
+  background: rgba(239, 68, 68, 0.15);
+  color: #EF4444;
+}
+
+.badge-improvement {
+  background: rgba(59, 130, 246, 0.15);
+  color: #2563EB;
+}
+
+.badge-general {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+}
+
+.feedback-role-badge {
+  padding: 3px 10px;
+  border-radius: 50px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: var(--surface);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.feedback-item-subject {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 2px;
+}
+
+.feedback-item-body {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text-main);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.feedback-item-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.btn-fb-action {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  font-family: var(--font-family);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-smooth);
+  border: 1px solid transparent;
+}
+
+.btn-fb-whatsapp {
+  background: rgba(37, 211, 102, 0.15);
+  color: #128C7E;
+  border-color: rgba(37, 211, 102, 0.3);
+}
+
+.btn-fb-whatsapp:hover {
+  background: #25D366;
+  color: #fff;
+}
+
+.btn-fb-copy {
+  background: var(--surface);
+  color: var(--text-main);
+  border-color: var(--border);
+}
+
+.btn-fb-copy:hover {
+  background: var(--primary-glow);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.btn-fb-delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+
+.btn-fb-delete:hover {
+  background: #EF4444;
+  color: #fff;
+}
+
+[data-theme="dark"] .feedback-item-card {
+  background: #1F2937;
+  border-color: #374151;
+}
+
+[data-theme="dark"] .feedback-item-body {
+  background: #111827;
+  border-color: #374151;
+  color: #F3F4F6;
+}
+
+[data-theme="dark"] .badge-improvement {
+  color: #60A5FA;
+}
+
+[data-theme="dark"] .btn-fb-whatsapp {
+  color: #34D399;
+}
+
+

@@ -476,8 +476,19 @@ app.get('/api/feedback', authenticateToken, requireTeacher, async (req, res) => 
   }
 });
 
+// حذف ملاحظة
+app.delete('/api/feedback/:id', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    await db.deleteFeedback(req.params.id);
+    res.json({ success: true, message: 'تم حذف الملاحظة بنجاح' });
+  } catch (err) {
+    res.status(500).json({ error: 'حدث خطأ في حذف الملاحظة' });
+  }
+});
+
 // Fallback to serving main html for client routing
 app.get('*', (req, res) => {
+
 
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
