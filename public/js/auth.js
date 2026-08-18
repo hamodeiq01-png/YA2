@@ -58,3 +58,37 @@ function showAlert(alertId, message, type = 'danger') {
     alertEl.style.display = 'none';
   }, 5000);
 }
+
+// --- Dark Mode ---
+function toggleDarkMode() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  localStorage.setItem('theme', isDark ? 'light' : 'dark');
+  
+  // Update button icon
+  const btn = document.getElementById('darkModeBtn');
+  if (btn) btn.textContent = isDark ? '🌙' : '☀️';
+}
+
+// Initialize dark mode on page load
+(function initDarkMode() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'dark') {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+  
+  // Inject toggle button into nav when DOM ready
+  document.addEventListener('DOMContentLoaded', () => {
+    const navInfo = document.querySelector('.user-nav-info');
+    if (navInfo) {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      const btn = document.createElement('button');
+      btn.id = 'darkModeBtn';
+      btn.className = 'dark-mode-toggle';
+      btn.textContent = isDark ? '☀️' : '🌙';
+      btn.onclick = toggleDarkMode;
+      navInfo.insertBefore(btn, navInfo.firstChild);
+    }
+  });
+})();

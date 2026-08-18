@@ -140,6 +140,20 @@
             <label for="targetDate">تاريخ الورد</label>
             <input type="date" id="targetDate" class="form-control" required>
           </div>
+          <label class="bulk-toggle">
+            <input type="checkbox" id="bulkScheduleToggle" onchange="toggleBulkSchedule()">
+            <span>📅 جدولة جماعية (نطاق تواريخ)</span>
+          </label>
+          <div class="bulk-date-range" id="bulkDateRange">
+            <div class="form-group">
+              <label for="bulkStartDate">من تاريخ</label>
+              <input type="date" id="bulkStartDate" class="form-control">
+            </div>
+            <div class="form-group">
+              <label for="bulkEndDate">إلى تاريخ</label>
+              <input type="date" id="bulkEndDate" class="form-control">
+            </div>
+          </div>
           <button type="submit" class="btn btn-primary">جدولة ونشر الورد</button>
         </form>
       </div>
@@ -276,6 +290,9 @@
           <!-- قائمة الطلاب -->
           <div class="card">
             <h3 class="card-title">طلابي المسجلين 👥</h3>
+            <div class="student-search-box">
+              <input type="text" class="student-search-input" id="studentSearchInput" placeholder="🔍 ابحث عن طالب..." oninput="filterStudentsList()">
+            </div>
             <div id="studentsListSection">
               <div class="empty-state">لا يوجد طلاب مسجلين.</div>
             </div>

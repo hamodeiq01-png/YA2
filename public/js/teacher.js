@@ -63,7 +63,47 @@ function loadDashboardData() {
   loadBookNames();
 }
 
-// --- تحميل الطلاب ---
+// --- تحميل الطلاب والبحث ---
+let cachedStudents = [];
+
+function filterStudentsList() {
+  const query = (document.getElementById('studentSearchInput')?.value || '').trim().toLowerCase();
+  const listEl = document.getElementById('studentsListSection');
+  if (!listEl) return;
+
+  const filtered = cachedStudents.filter(s => 
+    s.fullName.toLowerCase().includes(query) || s.username.toLowerCase().includes(query)
+  );
+
+  if (filtered.length === 0) {
+    listEl.innerHTML = '<div class="empty-state">لا يوجد طلاب مطابقين للبحث.</div>';
+    return;
+  }
+
+  listEl.innerHTML = filtered.map((student, index) => {
+    let rankBadge = '';
+    if (index === 0) rankBadge = '🥇';
+    else if (index === 1) rankBadge = '🥈';
+    else if (index === 2) rankBadge = '🥉';
+
+    return `
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-radius: 10px; margin-bottom: 8px; border-right: 3px solid var(--primary);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 1.2rem;">${rankBadge}</span>
+          <div>
+            <span style="font-weight: 700;">${escapeHtml(student.fullName)}</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">@${escapeHtml(student.username)}</span>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span class="points-badge">⭐ ${student.points || 0} نقطة</span>
+          <button onclick="handleDeleteUser('${student.id}', '${escapeHtml(student.fullName)}')" style="background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🗑️ حذف</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
 async function loadStudents() {
   try {
     const response = await fetch(`${API_BASE}/teacher/students`, {
@@ -71,44 +111,17 @@ async function loadStudents() {
     });
     const data = await response.json();
     if (response.ok) {
-      document.getElementById('statTotalStudents').textContent = data.students.length;
+      cachedStudents = data.students || [];
+      document.getElementById('statTotalStudents').textContent = cachedStudents.length;
 
       // تحديث قائمة الطلاب في فورم إضافة النقاط
       const pointsSelect = document.getElementById('pointsStudentSelect');
       if (pointsSelect) {
         pointsSelect.innerHTML = '<option value="">-- اختر طالباً --</option>' +
-          data.students.map(s => `<option value="${s.id}">${escapeHtml(s.fullName)} (${s.points || 0} نقطة)</option>`).join('');
+          cachedStudents.map(s => `<option value="${s.id}">${escapeHtml(s.fullName)} (${s.points || 0} نقطة)</option>`).join('');
       }
 
-      const listEl = document.getElementById('studentsListSection');
-      if (data.students.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">لا يوجد طلاب مسجلين بعد.</div>';
-        return;
-      }
-
-      listEl.innerHTML = data.students.map((student, index) => {
-        // تحديد ميدالية للمراكز الأولى
-        let rankBadge = '';
-        if (index === 0) rankBadge = '🥇';
-        else if (index === 1) rankBadge = '🥈';
-        else if (index === 2) rankBadge = '🥉';
-
-        return `
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--surface); border-radius: 10px; margin-bottom: 8px; border-right: 3px solid var(--primary);">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 1.2rem;">${rankBadge}</span>
-            <div>
-              <span style="font-weight: 700;">${escapeHtml(student.fullName)}</span>
-              <span style="font-size: 0.85rem; color: var(--text-muted); margin-right: 8px;">@${escapeHtml(student.username)}</span>
-            </div>
-          </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-            <span class="points-badge">⭐ ${student.points || 0} نقطة</span>
-            <button onclick="handleDeleteUser('${student.id}', '${escapeHtml(student.fullName)}')" style="background: #ef4444; color: white; border: none; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.85rem;">🗑️ حذف</button>
-          </div>
-        </div>
-      `;
-      }).join('');
+      filterStudentsList();
     }
   } catch (error) {
     console.error('Error loading students:', error);
@@ -656,25 +669,97 @@ async function rejectStudent(studentId) {
 
 // --- إنشاء الأوراد والحسابات ---
 
+// --- جدولة جماعية ---
+function toggleBulkSchedule() {
+  const isBulk = document.getElementById('bulkScheduleToggle').checked;
+  const bulkRange = document.getElementById('bulkDateRange');
+  const targetDateGroup = document.getElementById('targetDate').parentElement;
+
+  if (isBulk) {
+    bulkRange.classList.add('visible');
+    targetDateGroup.style.display = 'none';
+    document.getElementById('targetDate').removeAttribute('required');
+    document.getElementById('bulkStartDate').setAttribute('required', 'true');
+    document.getElementById('bulkEndDate').setAttribute('required', 'true');
+    document.getElementById('bulkStartDate').value = new Date().toLocaleDateString('sv');
+  } else {
+    bulkRange.classList.remove('visible');
+    targetDateGroup.style.display = 'block';
+    document.getElementById('targetDate').setAttribute('required', 'true');
+    document.getElementById('bulkStartDate').removeAttribute('required');
+    document.getElementById('bulkEndDate').removeAttribute('required');
+  }
+}
+
 async function handleCreateAssignment(e) {
   e.preventDefault();
-  const bookName = document.getElementById('bookName').value;
+  const bookName = document.getElementById('bookName').value.trim();
   const startPage = document.getElementById('startPage').value;
   const endPage = document.getElementById('endPage').value;
-  const targetDate = document.getElementById('targetDate').value;
+  const isBulk = document.getElementById('bulkScheduleToggle')?.checked;
 
   try {
-    const response = await fetch(`${API_BASE}/teacher/assignments`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ bookName, startPage, endPage, targetDate })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error);
+    if (isBulk) {
+      const startDateStr = document.getElementById('bulkStartDate').value;
+      const endDateStr = document.getElementById('bulkEndDate').value;
 
-    showAlert('teacherAlert', 'تم نشر الورد اليومي بنجاح!', 'success');
+      if (!startDateStr || !endDateStr) {
+        showAlert('teacherAlert', 'يرجى تحديد تاريخ البداية والنهاية', 'danger');
+        return;
+      }
+
+      const start = new Date(startDateStr);
+      const end = new Date(endDateStr);
+
+      if (start > end) {
+        showAlert('teacherAlert', 'تاريخ البداية يجب أن يكون قبل أو يساوي تاريخ النهاية', 'danger');
+        return;
+      }
+
+      // حساب عدد الأيام وتوليد التواريخ
+      const dates = [];
+      const current = new Date(start);
+      while (current <= end) {
+        dates.push(current.toLocaleDateString('sv'));
+        current.setDate(current.getDate() + 1);
+      }
+
+      if (dates.length > 30) {
+        showAlert('teacherAlert', 'الحد الأقصى للجدولة الجماعية 30 يوماً دفعة واحدة', 'danger');
+        return;
+      }
+
+      // إرسال طلب لكل تاريخ
+      let createdCount = 0;
+      for (const targetDate of dates) {
+        const response = await fetch(`${API_BASE}/teacher/assignments`, {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ bookName, startPage, endPage, targetDate })
+        });
+        if (response.ok) createdCount++;
+      }
+
+      showAlert('teacherAlert', `تمت جدولة ${createdCount} ورد بنجاح! 📅`, 'success');
+    } else {
+      const targetDate = document.getElementById('targetDate').value;
+      const response = await fetch(`${API_BASE}/teacher/assignments`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ bookName, startPage, endPage, targetDate })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+
+      showAlert('teacherAlert', 'تم نشر الورد اليومي بنجاح!', 'success');
+    }
+
     document.getElementById('assignmentForm').reset();
     document.getElementById('targetDate').value = new Date().toLocaleDateString('sv');
+    if (document.getElementById('bulkScheduleToggle')) {
+      document.getElementById('bulkScheduleToggle').checked = false;
+      toggleBulkSchedule();
+    }
     loadDashboardData();
   } catch (error) {
     showAlert('teacherAlert', error.message, 'danger');
