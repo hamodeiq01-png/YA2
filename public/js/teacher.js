@@ -1425,7 +1425,12 @@ async function openConversation(userId, userName, userRole, points) {
     avatarEl.className = `chat-contact-avatar ${userRole === 'teacher' ? 'teacher' : ''}`;
   }
   if (extraEl) {
-    extraEl.innerHTML = `<button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="loadActiveChatMessages('${userId}')">🔄 تحديث</button>`;
+    extraEl.innerHTML = `
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button type="button" class="btn-chat-clear" onclick="handleClearActiveChat()" title="مسح المحادثة بالكامل">🗑️ مسح المحادثة</button>
+        <button type="button" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.78rem;" onclick="loadActiveChatMessages('${userId}')">🔄 تحديث</button>
+      </div>
+    `;
   }
 
   // تمييز العنصر النشط بالقائمة
@@ -1507,11 +1512,12 @@ function renderMessages(messages) {
       : '';
 
     return `
-      <div class="chat-msg-row ${rowClass}">
+      <div class="chat-msg-row ${rowClass}" id="msg-row-${msg.id}">
         <div class="chat-msg-bubble">${escapeHtml(msg.content)}</div>
         <div class="chat-msg-meta">
           <span>${timeFormatted}</span>
           ${readStatusHtml}
+          <button type="button" class="btn-msg-delete" onclick="handleDeleteMessage('${msg.id}')" title="حذف الرسالة">🗑️</button>
         </div>
       </div>
     `;
@@ -1519,6 +1525,51 @@ function renderMessages(messages) {
 
   // النزول لأسفل المحادثة تلقائياً
   body.scrollTop = body.scrollHeight;
+}
+
+// حذف رسالة فردية
+async function handleDeleteMessage(messageId) {
+  if (!confirm('هل أنت متأكد من رغبتك في حذف هذه الرسالة؟')) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/messages/${messageId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل حذف الرسالة');
+
+    // إزالة الرسالة من القائمة المعروضة
+    activeChatMessages = activeChatMessages.filter(m => m.id.toString() !== messageId.toString());
+    renderMessages(activeChatMessages);
+    loadTeacherConversations();
+  } catch (err) {
+    showAlert('teacherAlert', err.message || 'حدث خطأ في حذف الرسالة', 'danger');
+  }
+}
+
+// مسح المحادثة بالكامل
+async function handleClearActiveChat() {
+  if (!activeChatUserId) return;
+  if (!confirm('هل أنت متأكد من رغبتك في مسح جميع رسائل هذه المحادثة؟ لا يمكن التراجع عن هذا الإجراء.')) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/messages/clear/${activeChatUserId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل مسح المحادثة');
+
+    activeChatMessages = [];
+    renderMessages(activeChatMessages);
+    loadTeacherConversations();
+    showAlert('teacherAlert', 'تم مسح سجل المحادثة بنجاح', 'success');
+  } catch (err) {
+    showAlert('teacherAlert', err.message || 'حدث خطأ في مسح المحادثة', 'danger');
+  }
 }
 
 // تحديد محادثة كمقروءة
@@ -1601,4 +1652,5 @@ async function handleSendTeacherMessage(event) {
     input.focus();
   }
 }
+
 

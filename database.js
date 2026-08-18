@@ -120,10 +120,13 @@ async function createUser(fullName, username, password, role, teacherId = null) 
 }
 
 async function authenticateUser(username, password) {
+  if (!username || !password) return null;
+  const cleanUsername = username.trim();
+
   const { data: user, error } = await supabase
     .from('users')
     .select('*')
-    .ilike('username', username)
+    .ilike('username', cleanUsername)
     .single();
 
   if (error || !user) return null;
@@ -1094,6 +1097,55 @@ async function getConversationsList(currentUserId, userRole) {
   return conversations;
 }
 
+// حذف رسالة فردية
+async function deleteMessage(messageId, userId, userRole) {
+  const uid = userId.toString();
+  
+  const { data: msg, error: fetchErr } = await supabase
+    .from('messages')
+    .select('*')
+    .eq('id', messageId)
+    .single();
+
+  if (fetchErr || !msg) {
+    throw new Error('الرسالة غير موجودة');
+  }
+
+  // المعلم يحذف أي رسالة في محادثته، الطالب يحذف رسائله التي أرسلها فقط
+  if (userRole !== 'teacher' && msg.sender_id.toString() !== uid) {
+    throw new Error('غير مصرح لك بحذف هذه الرسالة');
+  }
+
+  const { error: delErr } = await supabase
+    .from('messages')
+    .delete()
+    .eq('id', messageId);
+
+  if (delErr) {
+    throw new Error('حدث خطأ أثناء حذف الرسالة');
+  }
+
+  return { success: true };
+}
+
+// مسح كامل سجل المحادثة بين طرفين
+async function clearChatHistory(currentUserId, otherUserId) {
+  const u1 = currentUserId.toString();
+  const u2 = otherUserId.toString();
+
+  const { error } = await supabase
+    .from('messages')
+    .delete()
+    .or(`and(sender_id.eq.${u1},receiver_id.eq.${u2}),and(sender_id.eq.${u2},receiver_id.eq.${u1})`);
+
+  if (error) {
+    console.error('clearChatHistory error:', error);
+    throw new Error('حدث خطأ أثناء مسح المحادثة');
+  }
+
+  return { success: true };
+}
+
 module.exports = {
   registerStudent,
   createTeacher,
@@ -1127,8 +1179,11 @@ module.exports = {
   getChatMessages,
   markChatAsRead,
   getUnreadMessagesCount,
-  getConversationsList
+  getConversationsList,
+  deleteMessage,
+  clearChatHistory
 };
+
 
 
 

@@ -1037,22 +1037,64 @@ function renderStudentMessages(messages) {
       } catch (e) {}
     }
 
-    const readStatusHtml = isOutgoing 
-      ? `<span class="chat-read-status" title="${msg.isRead ? 'تمت القراءة' : 'تم الإرسال'}">${msg.isRead ? '✓✓' : '✓'}</span>` 
+    const deleteBtnHtml = isOutgoing
+      ? `<button type="button" class="btn-msg-delete" onclick="handleDeleteStudentMessage('${msg.id}')" title="حذف الرسالة">🗑️</button>`
       : '';
 
     return `
-      <div class="chat-msg-row ${rowClass}">
+      <div class="chat-msg-row ${rowClass}" id="student-msg-${msg.id}">
         <div class="chat-msg-bubble">${escapeHtml(msg.content)}</div>
         <div class="chat-msg-meta">
           <span>${timeFormatted}</span>
           ${readStatusHtml}
+          ${deleteBtnHtml}
         </div>
       </div>
     `;
   }).join('');
 
   bodyEl.scrollTop = bodyEl.scrollHeight;
+}
+
+// حذف رسالة أرسلها الطالب
+async function handleDeleteStudentMessage(messageId) {
+  if (!confirm('هل أنت متأكد من رغبتك في حذف هذه الرسالة؟')) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/messages/${messageId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل حذف الرسالة');
+
+    studentActiveMessages = studentActiveMessages.filter(m => m.id.toString() !== messageId.toString());
+    renderStudentMessages(studentActiveMessages);
+  } catch (err) {
+    alert(err.message || 'حدث خطأ في حذف الرسالة');
+  }
+}
+
+// مسح كامل المحادثة مع المعلم
+async function handleClearStudentChat() {
+  if (!studentActiveTeacherId) return;
+  if (!confirm('هل أنت متأكد من رغبتك في مسح جميع رسائل هذه المحادثة؟')) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/messages/clear/${studentActiveTeacherId}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders()
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'فشل مسح المحادثة');
+
+    studentActiveMessages = [];
+    renderStudentMessages(studentActiveMessages);
+  } catch (err) {
+    alert(err.message || 'حدث خطأ في مسح المحادثة');
+  }
 }
 
 // تحديد رسائل المحادثة كمقروءة للطالب

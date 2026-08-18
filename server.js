@@ -82,11 +82,11 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'اسم المستخدم أو كلمة المرور غير صحيحة' });
     }
 
-    // Create JWT Token
+    // Create JWT Token (Valid for 1 year so teachers/students stay logged in)
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role, fullName: user.fullName },
       JWT_SECRET,
-      { expiresIn: '30d' }
+      { expiresIn: '365d' }
     );
 
     res.json({
@@ -542,6 +542,26 @@ app.get('/api/messages/unread-count', authenticateToken, async (req, res) => {
     res.json({ unreadCount: count });
   } catch (err) {
     res.status(500).json({ error: 'حدث خطأ في جلب عدد الرسائل' });
+  }
+});
+
+// حذف رسالة فردية
+app.delete('/api/messages/:id', authenticateToken, async (req, res) => {
+  try {
+    await db.deleteMessage(req.params.id, req.user.id, req.user.role);
+    res.json({ success: true, message: 'تم حذف الرسالة بنجاح' });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'حدث خطأ في حذف الرسالة' });
+  }
+});
+
+// مسح كامل سجل المحادثة مع مستخدم
+app.delete('/api/messages/clear/:otherUserId', authenticateToken, async (req, res) => {
+  try {
+    await db.clearChatHistory(req.user.id, req.params.otherUserId);
+    res.json({ success: true, message: 'تم مسح المحادثة بنجاح' });
+  } catch (err) {
+    res.status(400).json({ error: err.message || 'حدث خطأ في مسح المحادثة' });
   }
 });
 

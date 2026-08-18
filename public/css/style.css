@@ -4328,5 +4328,302 @@ textarea.dev-form-control {
   border-color: rgba(96, 165, 250, 0.4);
 }
 
+/* ==========================================
+   --- خاصية حذف الرسائل ومسح المحادثة ---
+   ========================================== */
+
+.btn-msg-delete {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  opacity: 0.6;
+  transition: var(--transition-fast);
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-msg-delete:hover {
+  opacity: 1;
+  color: var(--danger);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-chat-clear {
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.1);
+  color: #DC2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: var(--font-family);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: var(--transition-fast);
+}
+
+.btn-chat-clear:hover {
+  background: #EF4444;
+  color: #fff;
+}
+
+/* ==========================================
+   --- تحسينات التجاوب الشاملة للجوال (Mobile UX) ---
+   ========================================== */
+
+/* شريط التبويبات للمعلم */
+.teacher-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--surface);
+  padding: 8px;
+  border-radius: var(--border-radius);
+  border: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.teacher-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.teacher-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-family: var(--font-family);
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.teacher-tab:hover {
+  background: var(--primary-glow);
+  color: var(--primary);
+}
+
+.teacher-tab.active {
+  background: var(--primary);
+  color: #ffffff;
+  box-shadow: var(--shadow-sm);
+}
+
+.teacher-tab.active .badge-count {
+  background: #ffffff !important;
+  color: var(--primary) !important;
+}
+
+/* شبكة الإحصائيات العامة */
+.overview-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+/* شريط الإجراءات السريعة */
+.quick-actions-bar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.quick-actions-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.quick-action-btn {
+  flex: 1;
+  min-width: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-family: var(--font-family);
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  transition: var(--transition-fast);
+  white-space: nowrap;
+}
+
+.quick-action-btn:hover {
+  background: var(--primary-glow);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* شبكة التبويبات للمعلم */
+.teacher-tab-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* استعلامات الوسائط للأجهزة اللوحية والجوال (Tablets & Mobiles) */
+@media (max-width: 860px) {
+  .nav-container {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+    padding: 12px 16px;
+  }
+
+  .user-nav-info {
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .user-nav-info .btn-dev-contact,
+  .user-nav-info .btn,
+  .user-nav-info .user-badge {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
+
+  .container {
+    width: 95%;
+    padding: 12px 0;
+  }
+
+  .teacher-tab-grid {
+    grid-template-columns: 1fr !important;
+    gap: 16px;
+  }
+
+  .overview-stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px;
+  }
+
+  .quick-actions-bar {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .quick-action-btn {
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 0.8rem;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* بطاقات الطلاب */
+  .student-list-item {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .student-list-item > div:last-child {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+
+  /* الجداول */
+  .table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    margin-top: 10px;
+  }
+
+  /* نافذة المحادثة في الجوال للطالب */
+  .dev-modal-card {
+    width: 96% !important;
+    max-height: 90vh !important;
+  }
+
+  .chat-footer {
+    padding: 10px 12px;
+  }
+
+  .chat-quick-chip {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+  }
+
+  .points-hero-card {
+    padding: 16px !important;
+  }
+
+  .points-hero-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .points-hero-icon {
+    margin: 0 auto;
+  }
+
+  .greeting-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+    padding: 16px !important;
+  }
+
+  .greeting-text {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .greeting-streak {
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .quick-actions-bar {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+
+  .teacher-tab {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+  }
+
+  .chat-msg-row {
+    max-width: 90%;
+  }
+
+  .chat-msg-bubble {
+    font-size: 0.88rem;
+    padding: 10px 12px;
+  }
+}
+
+
 
 
