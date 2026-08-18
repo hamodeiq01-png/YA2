@@ -1,20 +1,32 @@
 // Teacher Dashboard Logic
 
-// Toggle more tools section
-function toggleMoreTools() {
-  const section = document.getElementById('moreToolsSection');
-  const btn = document.getElementById('moreToolsToggle');
-  const isVisible = section.style.display !== 'none';
+// Tab switching
+function switchTab(tabName) {
+  // Hide all tab contents
+  document.querySelectorAll('.teacher-tab-content').forEach(el => {
+    el.classList.remove('active');
+  });
+  // Deactivate all tab buttons
+  document.querySelectorAll('.teacher-tab').forEach(el => {
+    el.classList.remove('active');
+  });
 
-  if (isVisible) {
-    section.style.display = 'none';
-    btn.classList.remove('active');
-  } else {
-    section.style.display = 'block';
-    btn.classList.add('active');
+  // Show selected tab
+  const tabContent = document.getElementById('tab-' + tabName);
+  if (tabContent) {
+    tabContent.classList.remove('active');
+    // Force reflow for animation
+    void tabContent.offsetWidth;
+    tabContent.classList.add('active');
   }
-}
 
+  // Activate button
+  const tabBtn = document.querySelector(`.teacher-tab[data-tab="${tabName}"]`);
+  if (tabBtn) tabBtn.classList.add('active');
+
+  // Save to localStorage
+  localStorage.setItem('teacherActiveTab', tabName);
+}
 
 // Protect Route
 window.addEventListener('DOMContentLoaded', () => {
@@ -35,6 +47,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
   // Initial Load
   loadDashboardData();
+
+  // Restore saved tab
+  const savedTab = localStorage.getItem('teacherActiveTab');
+  if (savedTab) switchTab(savedTab);
 });
 
 function loadDashboardData() {

@@ -28,94 +28,204 @@
   <main class="container">
     <div id="teacherAlert" class="alert"></div>
 
-    <!-- قسم الطلاب المعلقين بانتظار الموافقة -->
+    <!-- قسم الطلاب المعلقين بانتظار الموافقة (يظهر فوق كل شي) -->
     <div class="card" id="pendingStudentsCard" style="margin-bottom: 24px; display: none;">
       <h3 class="card-title">🔔 طلاب بانتظار الموافقة</h3>
-      <div id="pendingStudentsList" class="pending-list">
-        <!-- يتم تعبئتها ديناميكياً -->
+      <div id="pendingStudentsList" class="pending-list"></div>
+    </div>
+
+    <!-- شريط الإجراءات السريعة -->
+    <div class="quick-actions-bar">
+      <button class="quick-action-btn" onclick="switchTab('assignments'); document.getElementById('bookName').focus();">
+        <span class="quick-action-icon">📅</span>
+        <span>+ ورد جديد</span>
+      </button>
+      <button class="quick-action-btn" onclick="switchTab('accounts'); document.getElementById('studentFullName').focus();">
+        <span class="quick-action-icon">👤</span>
+        <span>+ طالب جديد</span>
+      </button>
+      <button class="quick-action-btn" onclick="switchTab('accounts'); setTimeout(() => document.getElementById('pointsStudentSelect').focus(), 100);">
+        <span class="quick-action-icon">⭐</span>
+        <span>إدارة نقاط</span>
+      </button>
+    </div>
+
+    <!-- شريط التبويبات -->
+    <div class="teacher-tabs">
+      <button class="teacher-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">
+        <span class="teacher-tab-icon">📊</span>
+        <span class="teacher-tab-text">لوحة القيادة</span>
+      </button>
+      <button class="teacher-tab" data-tab="assignments" onclick="switchTab('assignments')">
+        <span class="teacher-tab-icon">📖</span>
+        <span class="teacher-tab-text">الأوراد</span>
+      </button>
+      <button class="teacher-tab" data-tab="accounts" onclick="switchTab('accounts')">
+        <span class="teacher-tab-icon">👥</span>
+        <span class="teacher-tab-text">الحسابات</span>
+      </button>
+      <button class="teacher-tab" data-tab="settings" onclick="switchTab('settings')">
+        <span class="teacher-tab-icon">⚙️</span>
+        <span class="teacher-tab-text">الإعدادات</span>
+      </button>
+    </div>
+
+    <!-- ==================== تبويب 1: لوحة القيادة ==================== -->
+    <div class="teacher-tab-content active" id="tab-dashboard">
+
+      <!-- Stats summary -->
+      <div class="card" style="padding: 20px;">
+        <h3 style="margin-bottom: 10px;">نظرة عامة على المجموعة 📊</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+          <div class="student-list-item" style="border-right-color: var(--primary);">
+            <div>
+              <div class="name" style="font-size: 1.5rem;" id="statTotalStudents">0</div>
+              <div class="username">طلابي المسجلين</div>
+            </div>
+          </div>
+          <div class="student-list-item" style="border-right-color: var(--accent);">
+            <div>
+              <div class="name" style="font-size: 1.5rem;" id="statTotalSubmissions">0</div>
+              <div class="username">إنجازات القراءة</div>
+            </div>
+          </div>
+          <div class="student-list-item" style="border-right-color: #f59e0b;">
+            <div>
+              <div class="name" style="font-size: 1.5rem;" id="statPendingStudents">0</div>
+              <div class="username">بانتظار الموافقة</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- قسم الإحصائيات المتقدمة -->
+      <div class="card" id="statisticsCard">
+        <h3 class="card-title">
+          <span>📈 الإحصائيات والتقارير</span>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button onclick="loadStatistics('today')" id="statFilterToday" class="stat-filter-btn">اليوم</button>
+            <button onclick="loadStatistics('week')" id="statFilterWeek" class="stat-filter-btn">الأسبوع</button>
+            <button onclick="loadStatistics('all')" id="statFilterAll" class="stat-filter-btn active">الكل</button>
+            <button onclick="downloadStatsAsImage()" class="btn btn-primary" style="width: auto; padding: 8px 16px; font-size: 0.85rem;">📥 تحميل كصورة</button>
+          </div>
+        </h3>
+        <div id="statisticsContent">
+          <div class="empty-state">جاري تحميل الإحصائيات...</div>
+        </div>
       </div>
     </div>
 
-    <div class="dashboard-grid">
-      <!-- Sidebar Actions -->
-      <aside>
-        <!-- Add Reading Assignment -->
-        <div class="card">
-          <h3 class="card-title">إضافة ورد قراءة يومي 📅</h3>
-          <form id="assignmentForm" onsubmit="handleCreateAssignment(event)">
-            <div class="form-group">
-              <label for="bookName">اسم الكتاب</label>
-              <input type="text" id="bookName" class="form-control" placeholder="مثال: رياض الصالحين" required>
+    <!-- ==================== تبويب 2: إدارة الأوراد ==================== -->
+    <div class="teacher-tab-content" id="tab-assignments">
+
+      <!-- إضافة ورد قراءة يومي -->
+      <div class="card">
+        <h3 class="card-title">إضافة ورد قراءة يومي 📅</h3>
+        <form id="assignmentForm" onsubmit="handleCreateAssignment(event)">
+          <div class="form-group">
+            <label for="bookName">اسم الكتاب</label>
+            <input type="text" id="bookName" class="form-control" placeholder="مثال: رياض الصالحين" required>
+          </div>
+          <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label for="startPage">من صفحة</label>
+              <input type="number" id="startPage" class="form-control" min="1" required>
             </div>
-            <div class="form-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <div>
-                <label for="startPage">من صفحة</label>
-                <input type="number" id="startPage" class="form-control" min="1" required>
-              </div>
-              <div>
-                <label for="endPage">إلى صفحة</label>
-                <input type="number" id="endPage" class="form-control" min="1" required>
-              </div>
+            <div>
+              <label for="endPage">إلى صفحة</label>
+              <input type="number" id="endPage" class="form-control" min="1" required>
             </div>
-            <div class="form-group">
-              <label for="targetDate">تاريخ الورد</label>
-              <input type="date" id="targetDate" class="form-control" required>
-            </div>
-            <button type="submit" class="btn btn-primary">جدولة ونشر الورد</button>
-          </form>
+          </div>
+          <div class="form-group">
+            <label for="targetDate">تاريخ الورد</label>
+            <input type="date" id="targetDate" class="form-control" required>
+          </div>
+          <button type="submit" class="btn btn-primary">جدولة ونشر الورد</button>
+        </form>
+      </div>
+
+      <!-- تتبع إنجازات الطلاب -->
+      <div class="card">
+        <h3 class="card-title">تتبع إنجازات الطلاب 📥</h3>
+        <div class="table-responsive">
+          <table id="submissionsTable">
+            <thead>
+              <tr>
+                <th>الطالب</th>
+                <th>الكتاب والصفحات</th>
+                <th>تاريخ الورد</th>
+                <th>حالة الإنجاز</th>
+                <th>النقاط</th>
+                <th>الأسئلة والخواطر</th>
+                <th>وقت التسليم</th>
+              </tr>
+            </thead>
+            <tbody id="submissionsList">
+              <tr>
+                <td colspan="7" class="empty-state">
+                  <div class="empty-state-icon">📥</div>
+                  لا توجد إنجازات مرسلة بعد.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </div>
 
-        <!-- Add Student Account -->
-        <div class="card">
-          <h3 class="card-title">إنشاء حساب لطالب جديد 👤</h3>
-          <form id="studentForm" onsubmit="handleCreateStudent(event)">
-            <div class="form-group">
-              <label for="studentFullName">اسم الطالب الكامل</label>
-              <input type="text" id="studentFullName" class="form-control" placeholder="مثال: عمر بن عبد العزيز" required>
-            </div>
-            <div class="form-group">
-              <label for="studentUsername">اسم المستخدم للطالب</label>
-              <input type="text" id="studentUsername" class="form-control" placeholder="مثال: omar_2026" required autocomplete="username">
-            </div>
-            <div class="form-group">
-              <label for="studentPassword">كلمة المرور المؤقتة</label>
-              <input type="password" id="studentPassword" class="form-control" placeholder="أدخل كلمة مرور الطالب" required autocomplete="new-password">
-            </div>
-            <button type="submit" class="btn btn-secondary">إنشاء الحساب</button>
-          </form>
+      <!-- سجل الأوراد المجدولة -->
+      <div class="card">
+        <h3 class="card-title">سجل الأوراد المجدولة 📋</h3>
+        <div class="table-responsive">
+          <table id="assignmentsTable">
+            <thead>
+              <tr>
+                <th>اسم الكتاب</th>
+                <th>من صفحة</th>
+                <th>إلى صفحة</th>
+                <th>تاريخ الورد</th>
+                <th>إجراء</th>
+              </tr>
+            </thead>
+            <tbody id="assignmentsList">
+              <tr>
+                <td colspan="5" class="empty-state">
+                  <div class="empty-state-icon">📅</div>
+                  لا توجد أوراد قراءة مجدولة بعد.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
+      </div>
+    </div>
 
-        <!-- زر أدوات إضافية -->
-        <button class="more-tools-toggle" id="moreToolsToggle" onclick="toggleMoreTools()">
-          <span class="more-tools-dots">⋮</span>
-          <span class="more-tools-text">أدوات إضافية</span>
-          <span class="more-tools-arrow" id="moreToolsArrow">▼</span>
-        </button>
+    <!-- ==================== تبويب 3: إدارة الحسابات ==================== -->
+    <div class="teacher-tab-content" id="tab-accounts">
 
-        <!-- الأدوات الإضافية (مخفية افتراضياً) -->
-        <div class="more-tools-section" id="moreToolsSection" style="display: none;">
-
-          <!-- إنشاء حساب معلم جديد -->
+      <div class="teacher-tab-grid">
+        <!-- العمود الأيسر: الفورمات -->
+        <div>
+          <!-- إنشاء حساب طالب -->
           <div class="card">
-            <h3 class="card-title">إنشاء حساب معلم جديد 🎓</h3>
-            <form id="teacherForm" onsubmit="handleCreateTeacher(event)">
+            <h3 class="card-title">إنشاء حساب لطالب جديد 👤</h3>
+            <form id="studentForm" onsubmit="handleCreateStudent(event)">
               <div class="form-group">
-                <label for="newTeacherFullName">اسم المعلم الكامل</label>
-                <input type="text" id="newTeacherFullName" class="form-control" placeholder="مثال: أ. محمد أحمد" required autocomplete="name">
+                <label for="studentFullName">اسم الطالب الكامل</label>
+                <input type="text" id="studentFullName" class="form-control" placeholder="مثال: عمر بن عبد العزيز" required>
               </div>
               <div class="form-group">
-                <label for="newTeacherUsername">اسم المستخدم</label>
-                <input type="text" id="newTeacherUsername" class="form-control" placeholder="اختر اسم مستخدم فريد" required autocomplete="username">
+                <label for="studentUsername">اسم المستخدم للطالب</label>
+                <input type="text" id="studentUsername" class="form-control" placeholder="مثال: omar_2026" required autocomplete="username">
               </div>
               <div class="form-group">
-                <label for="newTeacherPassword">كلمة المرور</label>
-                <input type="password" id="newTeacherPassword" class="form-control" placeholder="اختر كلمة مرور قوية" required autocomplete="new-password">
+                <label for="studentPassword">كلمة المرور المؤقتة</label>
+                <input type="password" id="studentPassword" class="form-control" placeholder="أدخل كلمة مرور الطالب" required autocomplete="new-password">
               </div>
-              <button type="submit" class="btn btn-secondary">إنشاء حساب المعلم</button>
+              <button type="submit" class="btn btn-secondary">إنشاء الحساب</button>
             </form>
           </div>
 
-          <!-- إضافة / خصم نقاط -->
+          <!-- إدارة نقاط الطالب -->
           <div class="card">
             <h3 class="card-title">إدارة نقاط الطالب ⭐</h3>
             <form id="addPointsForm" onsubmit="return false;">
@@ -140,167 +250,97 @@
             </form>
           </div>
 
-          <!-- تعديل أسماء الكتب -->
+          <!-- إنشاء حساب معلم -->
           <div class="card">
-            <h3 class="card-title">تعديل أسماء الكتب ✏️</h3>
-            <form id="renameBookForm" onsubmit="handleRenameBook(event)">
+            <h3 class="card-title">إنشاء حساب معلم جديد 🎓</h3>
+            <form id="teacherForm" onsubmit="handleCreateTeacher(event)">
               <div class="form-group">
-                <label for="oldBookName">اختر الكتاب</label>
-                <select id="oldBookName" class="form-control" required>
-                  <option value="">-- اختر كتاباً --</option>
-                </select>
+                <label for="newTeacherFullName">اسم المعلم الكامل</label>
+                <input type="text" id="newTeacherFullName" class="form-control" placeholder="مثال: أ. محمد أحمد" required autocomplete="name">
               </div>
               <div class="form-group">
-                <label for="newBookName">الاسم الجديد</label>
-                <input type="text" id="newBookName" class="form-control" placeholder="أدخل الاسم الجديد للكتاب" required>
+                <label for="newTeacherUsername">اسم المستخدم</label>
+                <input type="text" id="newTeacherUsername" class="form-control" placeholder="اختر اسم مستخدم فريد" required autocomplete="username">
               </div>
-              <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent), #F59E0B);">✏️ تعديل الاسم</button>
+              <div class="form-group">
+                <label for="newTeacherPassword">كلمة المرور</label>
+                <input type="password" id="newTeacherPassword" class="form-control" placeholder="اختر كلمة مرور قوية" required autocomplete="new-password">
+              </div>
+              <button type="submit" class="btn btn-secondary">إنشاء حساب المعلم</button>
             </form>
           </div>
+        </div>
 
-          <!-- تعيين صورة غلاف الكتاب -->
+        <!-- العمود الأيمن: القوائم -->
+        <div>
+          <!-- قائمة الطلاب -->
           <div class="card">
-            <h3 class="card-title">صورة غلاف الكتاب 🖼️</h3>
-            <div>
-              <div class="form-group">
-                <label for="imageBookName">اختر الكتاب</label>
-                <select id="imageBookName" class="form-control">
-                  <option value="">-- اختر كتاباً --</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>اختر صورة الغلاف</label>
-                <label for="bookImageFile" class="file-upload-area" id="fileUploadArea">
-                  <span class="file-upload-icon">📷</span>
-                  <span class="file-upload-text" id="fileUploadText">اضغط لاختيار صورة من الألبوم</span>
-                  <input type="file" id="bookImageFile" accept="image/*" style="display: none;" onchange="previewBookImage(this)">
-                </label>
-              </div>
-              <div id="bookImagePreview" style="display:none; margin-bottom: 14px; text-align: center;">
-                <img id="bookImagePreviewImg" src="" alt="معاينة" style="max-width: 100%; max-height: 180px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-              </div>
-              <button type="button" onclick="handleSetBookImage()" class="btn btn-primary" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);">🖼️ تعيين الصورة</button>
+            <h3 class="card-title">طلابي المسجلين 👥</h3>
+            <div id="studentsListSection">
+              <div class="empty-state">لا يوجد طلاب مسجلين.</div>
             </div>
           </div>
 
-        </div>
-      </aside>
-
-      <!-- Main Contents -->
-      <section>
-        <!-- Stats summary -->
-        <div class="card" style="padding: 20px;">
-          <h3 style="margin-bottom: 10px;">نظرة عامة على المجموعة 📊</h3>
-          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
-            <div class="student-list-item" style="border-right-color: var(--primary);">
-              <div>
-                <div class="name" style="font-size: 1.5rem;" id="statTotalStudents">0</div>
-                <div class="username">طلابي المسجلين</div>
-              </div>
-            </div>
-            <div class="student-list-item" style="border-right-color: var(--accent);">
-              <div>
-                <div class="name" style="font-size: 1.5rem;" id="statTotalSubmissions">0</div>
-                <div class="username">إنجازات القراءة</div>
-              </div>
-            </div>
-            <div class="student-list-item" style="border-right-color: #f59e0b;">
-              <div>
-                <div class="name" style="font-size: 1.5rem;" id="statPendingStudents">0</div>
-                <div class="username">بانتظار الموافقة</div>
-              </div>
+          <!-- قائمة المعلمين -->
+          <div class="card">
+            <h3 class="card-title">المعلمين المسجلين 🎓</h3>
+            <div id="teachersListSection">
+              <div class="empty-state">لا يوجد معلمين.</div>
             </div>
           </div>
         </div>
-
-        <!-- قسم الإحصائيات المتقدمة -->
-        <div class="card" id="statisticsCard">
-          <h3 class="card-title">
-            <span>📈 الإحصائيات والتقارير</span>
-            <div style="display: flex; gap: 8px; align-items: center;">
-              <button onclick="loadStatistics('today')" id="statFilterToday" class="stat-filter-btn">اليوم</button>
-              <button onclick="loadStatistics('week')" id="statFilterWeek" class="stat-filter-btn">الأسبوع</button>
-              <button onclick="loadStatistics('all')" id="statFilterAll" class="stat-filter-btn active">الكل</button>
-              <button onclick="downloadStatsAsImage()" class="btn btn-primary" style="width: auto; padding: 8px 16px; font-size: 0.85rem;">📥 تحميل كصورة</button>
-            </div>
-          </h3>
-          <div id="statisticsContent">
-            <div class="empty-state">جاري تحميل الإحصائيات...</div>
-          </div>
-        </div>
-
-        <!-- قائمة الطلاب المسجلين مع النقاط -->
-        <div class="card">
-          <h3 class="card-title">طلابي المسجلين 👥</h3>
-          <div id="studentsListSection">
-            <div class="empty-state">لا يوجد طلاب مسجلين.</div>
-          </div>
-        </div>
-
-        <!-- قائمة المعلمين -->
-        <div class="card">
-          <h3 class="card-title">المعلمين المسجلين 🎓</h3>
-          <div id="teachersListSection">
-            <div class="empty-state">لا يوجد معلمين.</div>
-          </div>
-        </div>
-
-        <!-- Progress Tracker -->
-        <div class="card">
-          <h3 class="card-title">تتبع إنجازات الطلاب اليومية</h3>
-          
-          <div class="table-responsive">
-            <table id="submissionsTable">
-              <thead>
-                <tr>
-                  <th>الطالب</th>
-                  <th>الكتاب والصفحات</th>
-                  <th>تاريخ الورد</th>
-                  <th>حالة الإنجاز</th>
-                  <th>النقاط</th>
-                  <th>الأسئلة والخواطر</th>
-                  <th>وقت التسليم</th>
-                </tr>
-              </thead>
-              <tbody id="submissionsList">
-                <tr>
-                  <td colspan="7" class="empty-state">
-                    <div class="empty-state-icon">📥</div>
-                    لا توجد إنجازات مرسلة بعد.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <!-- Created Assignments List -->
-        <div class="card">
-          <h3 class="card-title">سجل الأوراد المجدولة</h3>
-          <div class="table-responsive">
-            <table id="assignmentsTable">
-              <thead>
-                <tr>
-                  <th>اسم الكتاب</th>
-                  <th>من صفحة</th>
-                  <th>إلى صفحة</th>
-                  <th>تاريخ الورد</th>
-                  <th>إجراء</th>
-                </tr>
-              </thead>
-              <tbody id="assignmentsList">
-                <tr>
-                  <td colspan="5" class="empty-state">
-                    <div class="empty-state-icon">📅</div>
-                    لا توجد أوراد قراءة مجدولة بعد. أضف ورداً من القائمة الجانبية.
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </section>
+      </div>
     </div>
+
+    <!-- ==================== تبويب 4: إعدادات الكتب ==================== -->
+    <div class="teacher-tab-content" id="tab-settings">
+
+      <div class="teacher-tab-grid">
+        <!-- تعديل أسماء الكتب -->
+        <div class="card">
+          <h3 class="card-title">تعديل أسماء الكتب ✏️</h3>
+          <form id="renameBookForm" onsubmit="handleRenameBook(event)">
+            <div class="form-group">
+              <label for="oldBookName">اختر الكتاب</label>
+              <select id="oldBookName" class="form-control" required>
+                <option value="">-- اختر كتاباً --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="newBookName">الاسم الجديد</label>
+              <input type="text" id="newBookName" class="form-control" placeholder="أدخل الاسم الجديد للكتاب" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent), #F59E0B);">✏️ تعديل الاسم</button>
+          </form>
+        </div>
+
+        <!-- تعيين صورة غلاف الكتاب -->
+        <div class="card">
+          <h3 class="card-title">صورة غلاف الكتاب 🖼️</h3>
+          <div>
+            <div class="form-group">
+              <label for="imageBookName">اختر الكتاب</label>
+              <select id="imageBookName" class="form-control">
+                <option value="">-- اختر كتاباً --</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>اختر صورة الغلاف</label>
+              <label for="bookImageFile" class="file-upload-area" id="fileUploadArea">
+                <span class="file-upload-icon">📷</span>
+                <span class="file-upload-text" id="fileUploadText">اضغط لاختيار صورة من الألبوم</span>
+                <input type="file" id="bookImageFile" accept="image/*" style="display: none;" onchange="previewBookImage(this)">
+              </label>
+            </div>
+            <div id="bookImagePreview" style="display:none; margin-bottom: 14px; text-align: center;">
+              <img id="bookImagePreviewImg" src="" alt="معاينة" style="max-width: 100%; max-height: 180px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            </div>
+            <button type="button" onclick="handleSetBookImage()" class="btn btn-primary" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);">🖼️ تعيين الصورة</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <script src="js/auth.js"></script>
