@@ -227,19 +227,12 @@ async function getAssignmentsForTeacher(teacherId) {
 
 async function getAssignmentsForStudentToday(studentId) {
   const todayStr = new Date().toLocaleDateString('sv');
-  // حساب تواريخ الأيام السبعة الماضية للسماح بالإنجاز المتأخر
-  const dates = [todayStr];
-  for (let i = 1; i <= 7; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    dates.push(d.toLocaleDateString('sv'));
-  }
 
-  // جلب أوراد اليوم والأيام السبعة الماضية
+  // جلب جميع الأوراد (بدون حد زمني) — الطالب يقدر ينجز أي ورد سابق
   const { data: assignments, error } = await supabase
     .from('assignments')
     .select('*')
-    .in('target_date', dates)
+    .lte('target_date', todayStr)
     .order('target_date', { ascending: false });
 
   if (error || !assignments) return [];
@@ -293,10 +286,7 @@ async function submitProgress(studentId, assignmentId, isCompleted, questions = 
   const target = new Date(targetDate);
   const diffDays = Math.floor((today - target) / (1000 * 60 * 60 * 24));
 
-  // التحقق من المهلة (أسبوع كحد أقصى)
-  if (diffDays > 7) {
-    throw new Error('انتهت مهلة تسليم هذا الورد (أسبوع كحد أقصى)');
-  }
+  // لا يوجد حد زمني — الطالب يقدر ينجز أي ورد سابق (بدون نقاط إذا تأخر أكثر من يومين)
 
   // حساب النقاط
   let pointsToAward = 0;

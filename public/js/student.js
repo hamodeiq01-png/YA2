@@ -16,9 +16,43 @@ window.addEventListener('DOMContentLoaded', () => {
   // Set name
   document.getElementById('studentName').textContent = `الطالب: ${user.fullName}`;
 
+  // Set dynamic greeting
+  setGreeting(user.fullName);
+
   // Load dashboard
   loadStudentDashboard();
 });
+
+// --- التحية الديناميكية ---
+function setGreeting(name) {
+  const hour = new Date().getHours();
+  const emojiEl = document.getElementById('greetingEmoji');
+  const mainEl = document.getElementById('greetingMain');
+  const subEl = document.getElementById('greetingSub');
+
+  let emoji, greeting, sub;
+  if (hour >= 5 && hour < 12) {
+    emoji = '🌅';
+    greeting = `صباح الخير يا ${name}!`;
+    sub = 'هيا نبدأ يومنا بالقراءة والعلم';
+  } else if (hour >= 12 && hour < 17) {
+    emoji = '☀️';
+    greeting = `مساء النور يا ${name}!`;
+    sub = 'وقت مثالي لإكمال أوراد القراءة';
+  } else if (hour >= 17 && hour < 21) {
+    emoji = '🌆';
+    greeting = `مساء الخير يا ${name}!`;
+    sub = 'اختم يومك بقراءة ممتعة ومفيدة';
+  } else {
+    emoji = '🌙';
+    greeting = `أهلاً يا ${name}!`;
+    sub = 'القراءة قبل النوم تثبت المعلومات';
+  }
+
+  if (emojiEl) emojiEl.textContent = emoji;
+  if (mainEl) mainEl.textContent = greeting;
+  if (subEl) subEl.textContent = sub;
+}
 
 // --- الرسائل التشجيعية اليومية ---
 const dailyQuotes = [
@@ -62,6 +96,98 @@ function setDailyQuote() {
   }
 }
 
+// --- نظام الإنجازات ---
+const ACHIEVEMENTS = [
+  { id: 'first_ord', emoji: '🌱', name: 'بداية الرحلة', desc: 'أكمل أول ورد', check: (h) => h.filter(x => x.isCompleted).length >= 1 },
+  { id: 'reader_10', emoji: '📖', name: 'قارئ نشط', desc: 'أكمل 10 أوراد', check: (h) => h.filter(x => x.isCompleted).length >= 10 },
+  { id: 'streak_7', emoji: '⭐', name: 'نجم الأسبوع', desc: '7 أيام متواصلة', check: (h, s) => s >= 7 },
+  { id: 'streak_14', emoji: '🔥', name: 'لا يُوقف', desc: '14 يوم متواصل', check: (h, s) => s >= 14 },
+  { id: 'no_late_10', emoji: '💯', name: 'بلا تأخير', desc: '10 أوراد في وقتها', check: (h) => h.filter(x => x.isCompleted && !x.isLate).length >= 10 },
+  { id: 'multi_books', emoji: '📚', name: 'محب الكتب', desc: 'قرأ في 3 كتب', check: (h) => new Set(h.filter(x => x.isCompleted).map(x => x.bookName)).size >= 3 },
+  { id: 'points_100', emoji: '👑', name: '100 نقطة', desc: 'وصل 100 نقطة', check: (h) => h.reduce((s, x) => s + (x.pointsAwarded || 0), 0) >= 100 },
+];
+
+function updateAchievements(history, streak) {
+  const grid = document.getElementById('achievementsGrid');
+  if (!grid) return;
+
+  grid.innerHTML = ACHIEVEMENTS.map(ach => {
+    const unlocked = ach.check(history, streak);
+    return `
+      <div class="achievement-card ${unlocked ? 'unlocked' : 'locked'}">
+        <div class="achievement-emoji">${ach.emoji}</div>
+        <div class="achievement-name">${ach.name}</div>
+        <div class="achievement-desc">${ach.desc}</div>
+      </div>`;
+  }).join('');
+}
+
+// --- حساب سلسلة القراءة المتواصلة ---
+function calculateStreak(history) {
+  const completedDates = new Set();
+  history.forEach(h => {
+    if (h.isCompleted && h.submittedAt) {
+      const d = new Date(h.submittedAt).toLocaleDateString('sv');
+      completedDates.add(d);
+    }
+  });
+
+  if (completedDates.size === 0) return 0;
+
+  let streak = 0;
+  const today = new Date();
+
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toLocaleDateString('sv');
+    if (completedDates.has(dateStr)) {
+      streak++;
+    } else {
+      // إذا كان اليوم الحالي ولم ينجز بعد، نتخطاه
+      if (i === 0) continue;
+      break;
+    }
+  }
+
+  return streak;
+}
+
+function updateStreakDisplay(streak) {
+  const countEl = document.getElementById('streakCount');
+  const streakEl = document.getElementById('greetingStreak');
+  if (countEl) countEl.textContent = streak;
+  if (streakEl) {
+    if (streak === 0) {
+      streakEl.querySelector('.streak-fire').textContent = '❄️';
+    }
+  }
+}
+
+// --- تأثير الكونفيتي ---
+function launchConfetti() {
+  const container = document.getElementById('confettiContainer');
+  if (!container) return;
+
+  const colors = ['#FBBF24', '#10B981', '#3B82F6', '#EF4444', '#8B5CF6', '#F59E0B', '#EC4899'];
+
+  for (let i = 0; i < 60; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.width = (Math.random() * 8 + 5) + 'px';
+    piece.style.height = (Math.random() * 8 + 5) + 'px';
+    piece.style.animationDuration = (Math.random() * 2 + 2) + 's';
+    piece.style.animationDelay = (Math.random() * 0.5) + 's';
+    container.appendChild(piece);
+  }
+
+  setTimeout(() => {
+    container.innerHTML = '';
+  }, 4000);
+}
+
 function loadStudentDashboard() {
   setDailyQuote();
   loadStudentPoints();
@@ -77,12 +203,9 @@ async function loadStudentPoints() {
     const data = await response.json();
 
     if (response.ok) {
-      const pointsEl = document.getElementById('studentPointsValue');
       const rankBadgeEl = document.getElementById('studentRankBadge');
       const rankTextEl = document.getElementById('studentRankText');
       const motivationEl = document.getElementById('pointsMotivation');
-
-      pointsEl.textContent = data.points || 0;
 
       if (data.rank && data.totalStudents) {
         let rankEmoji = '';
@@ -130,7 +253,75 @@ function getBookImage(bookName) {
   return null;
 }
 
-// --- تحديث قسم ثماري ---
+// --- تحديث بطاقة آخر كتاب ---
+function updateLastBookCard() {
+  const labelEl = document.getElementById('lastBookLabel');
+  const nameEl = document.getElementById('lastBookName');
+  const pointsEl = document.getElementById('studentPointsValue');
+  const iconEl = document.getElementById('lastBookIcon');
+  const progressContainer = document.getElementById('bookProgressContainer');
+
+  // إيجاد آخر كتاب (من السجل أو من الأوراد الحالية)
+  let lastBookName = null;
+
+  // أولاً من الأوراد الحالية (الأحدث)
+  if (allAssignmentsData.length > 0) {
+    lastBookName = allAssignmentsData[0].assignment.bookName;
+  }
+  // ثانياً من السجل
+  if (!lastBookName && allHistoryData.length > 0) {
+    lastBookName = allHistoryData[0].bookName;
+  }
+
+  if (!lastBookName) {
+    nameEl.textContent = 'لا يوجد كتب بعد';
+    pointsEl.textContent = '0';
+    labelEl.textContent = 'ابدأ رحلتك';
+    return;
+  }
+
+  // نقاط هذا الكتاب
+  const bookHistory = allHistoryData.filter(h => h.bookName === lastBookName);
+  const bookPoints = bookHistory.reduce((sum, h) => sum + (h.pointsAwarded || 0), 0);
+
+  // تحديث العناصر
+  labelEl.textContent = 'آخر كتاب تقرأه';
+  nameEl.textContent = lastBookName;
+  pointsEl.textContent = bookPoints;
+
+  // أيقونة/صورة الكتاب
+  const bookImage = getBookImage(lastBookName);
+  const bookNames = [...new Set([
+    ...allAssignmentsData.map(a => a.assignment.bookName),
+    ...allHistoryData.map(h => h.bookName)
+  ])];
+  const bookIndex = bookNames.indexOf(lastBookName);
+  if (bookImage) {
+    iconEl.innerHTML = `<img src="${escapeHtml(bookImage)}" alt="${escapeHtml(lastBookName)}" style="width:55px;height:70px;object-fit:cover;border-radius:10px;box-shadow:0 4px 15px rgba(0,0,0,0.2);">`;
+  } else {
+    iconEl.textContent = getBookIcon(bookIndex >= 0 ? bookIndex : 0);
+  }
+
+  // شريط تقدم الكتاب
+  const allBookAssignments = [...allAssignmentsData.filter(a => a.assignment.bookName === lastBookName).map(a => a.assignment), ...allHistoryData.filter(h => h.bookName === lastBookName)];
+
+  if (allBookAssignments.length > 0) {
+    const minPage = Math.min(...allBookAssignments.map(a => a.startPage));
+    const maxPage = Math.max(...allBookAssignments.map(a => a.endPage));
+    const totalPages = maxPage - minPage + 1;
+    const completedPages = bookHistory.filter(h => h.isCompleted).reduce((sum, h) => sum + Math.max(0, (h.endPage || 0) - (h.startPage || 0) + 1), 0);
+    const percent = totalPages > 0 ? Math.min(100, Math.round((completedPages / totalPages) * 100)) : 0;
+
+    progressContainer.style.display = 'block';
+    document.getElementById('bookProgressPercent').textContent = percent + '%';
+    document.getElementById('bookProgressPages').textContent = `${completedPages} / ${totalPages} صفحة`;
+    setTimeout(() => {
+      document.getElementById('bookProgressFill').style.width = percent + '%';
+    }, 300);
+  }
+}
+
+// --- تحديث قسم ثماري (الآن يتضمن النقاط الإجمالية) ---
 function updateThamari() {
   const history = allHistoryData;
 
@@ -143,7 +334,7 @@ function updateThamari() {
     return sum + pages;
   }, 0);
 
-  // مجموع النقاط
+  // مجموع النقاط الإجمالية
   const totalPoints = history.reduce((sum, h) => sum + (h.pointsAwarded || 0), 0);
 
   // عدد الكتب الفريدة
@@ -155,12 +346,17 @@ function updateThamari() {
   const rate = totalOrds > 0 ? Math.round((completedCount / totalOrds) * 100) : 0;
 
   // تحديث العناصر
+  document.getElementById('thamariPoints').textContent = totalPoints;
   document.getElementById('thamariPages').textContent = totalPages;
   document.getElementById('thamariCompleted').textContent = completedCount;
   document.getElementById('thamariTotal').textContent = totalOrds;
-  document.getElementById('thamariPoints').textContent = totalPoints;
   document.getElementById('thamariBooks').textContent = uniqueBooks.size;
   document.getElementById('thamariRate').textContent = rate + '%';
+
+  // حساب السلسلة والإنجازات
+  const streak = calculateStreak(history);
+  updateStreakDisplay(streak);
+  updateAchievements(history, streak);
 }
 
 // --- تحميل بطاقات الكتب (الشاشة الرئيسية) ---
@@ -189,8 +385,11 @@ async function loadBooksOverview() {
     allAssignmentsData = assignData.assignments || [];
     allHistoryData = histData.history || [];
 
-    // تحديث ثماري
+    // تحديث ثماري (يتضمن الآن النقاط الإجمالية والسلسلة والإنجازات)
     updateThamari();
+
+    // تحديث بطاقة آخر كتاب
+    updateLastBookCard();
 
     // استخراج أسماء الكتب الفريدة من الأوراد والسجل
     const bookNamesSet = new Set();
@@ -248,7 +447,7 @@ async function loadBooksOverview() {
         : `<div class="book-select-icon">${icon}</div>`;
 
       return `
-        <div class="book-select-card" onclick="openBook('${escapeHtml(bookName).replace(/'/g, "\\'")}')">
+        <div class="book-select-card" onclick="openBook('${escapeHtml(bookName).replace(/'/g, "\\'")}')" >
           ${urgencyBadge}
           ${imageHtml}
           <h3 class="book-select-name">${escapeHtml(bookName)}</h3>
@@ -381,18 +580,18 @@ function loadBookAssignments(bookName) {
     } else if (diffDays >= 2) {
       assignType = 'missed';
       typeClass = 'assignment-type-missed';
-      pointsBadge = '<span class="badge badge-missed">📛 ورد فائت - بدون نقاط</span>';
+      pointsBadge = '<span class="badge badge-missed">📛 ورد سابق — بدون نقاط لكن يُسجّل إنجازك</span>';
     }
 
     let html = `<div class="book-assignment-item ${typeClass}">`;
 
-    // تنبيه الورد الفائت
+    // تنبيه الورد السابق
     if (assignType === 'missed' && !sub) {
       html += `
         <div class="missed-alert">
           <div class="missed-alert-icon">📛</div>
           <div class="missed-alert-text">
-            <strong>ورد فائت</strong> - يمكنك إنجازه لكن بدون نقاط
+            <strong>ورد سابق</strong> - يمكنك إنجازه وسيُسجّل لك لكن بدون نقاط
           </div>
         </div>`;
     }
@@ -440,7 +639,7 @@ function loadBookAssignments(bookName) {
     } else {
       // فورم التسليم
       const submitBtnText = assignType === 'missed'
-        ? 'إرسال الإنجاز (بدون نقاط)'
+        ? 'إرسال الإنجاز (يُسجّل بدون نقاط)'
         : 'إرسال الإنجاز للمعلم';
       const submitBtnStyle = assignType === 'missed'
         ? 'style="background: linear-gradient(135deg, #6B7280, #9CA3AF);"'
@@ -504,6 +703,9 @@ async function handleSubmitProgress(e, assignmentId, index) {
 
     showAlert('studentAlert', data.message, 'success');
 
+    // 🎉 تأثير الكونفيتي عند النجاح!
+    launchConfetti();
+
     // إعادة تحميل النقاط الإجمالية
     loadStudentPoints();
 
@@ -529,6 +731,9 @@ async function reloadDataAndRefreshBook() {
 
     allAssignmentsData = assignData.assignments || [];
     allHistoryData = histData.history || [];
+
+    // تحديث ثماري (والإنجازات والسلسلة)
+    updateThamari();
 
     // إذا كنا في صفحة كتاب، نحدّثها
     if (currentBookName) {

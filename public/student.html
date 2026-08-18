@@ -9,6 +9,9 @@
 </head>
 <body>
 
+  <!-- Confetti Container -->
+  <div id="confettiContainer" class="confetti-container"></div>
+
   <!-- Header -->
   <header>
     <div class="nav-container">
@@ -29,13 +32,32 @@
 
     <!-- ============ الشاشة 1: اختيار الكتاب ============ -->
     <div id="booksView">
-      <!-- بطاقة النقاط الإجمالية -->
+
+      <!-- تحية ديناميكية -->
+      <div class="greeting-banner" id="greetingBanner">
+        <div class="greeting-text">
+          <span class="greeting-emoji" id="greetingEmoji">🌅</span>
+          <div>
+            <div class="greeting-main" id="greetingMain">صباح الخير!</div>
+            <div class="greeting-sub" id="greetingSub">هيا نبدأ يومنا بالقراءة</div>
+          </div>
+        </div>
+        <div class="greeting-streak" id="greetingStreak">
+          <span class="streak-fire">🔥</span>
+          <span class="streak-count" id="streakCount">0</span>
+          <span class="streak-label">يوم متواصل</span>
+        </div>
+      </div>
+
+      <!-- بطاقة آخر كتاب -->
       <div class="points-hero-card" id="pointsHeroCard">
         <div class="points-hero-content">
-          <div class="points-hero-icon">⭐</div>
+          <div class="points-hero-icon" id="lastBookIcon">📗</div>
           <div class="points-hero-info">
-            <div class="points-hero-label">نقاطك الإجمالية</div>
+            <div class="points-hero-label" id="lastBookLabel">آخر كتاب تقرأه</div>
+            <div class="points-hero-book-name" id="lastBookName">جاري التحميل...</div>
             <div class="points-hero-value" id="studentPointsValue">0</div>
+            <div class="points-hero-sublabel">نقطة في هذا الكتاب</div>
           </div>
         </div>
         <div class="points-hero-rank" id="studentRankInfo">
@@ -45,9 +67,34 @@
         <div class="points-hero-message" id="pointsMotivation">
           واصل القراءة واكسب المزيد من النقاط! 📚
         </div>
+        <!-- شريط تقدم الكتاب -->
+        <div class="book-progress-bar-container" id="bookProgressContainer" style="display:none;">
+          <div class="book-progress-info">
+            <span id="bookProgressLabel">تقدمك في الكتاب</span>
+            <span id="bookProgressPercent">0%</span>
+          </div>
+          <div class="book-progress-bar">
+            <div class="book-progress-fill" id="bookProgressFill" style="width:0%"></div>
+          </div>
+          <div class="book-progress-pages" id="bookProgressPages">0 / 0 صفحة</div>
+        </div>
         <div class="daily-quote" id="dailyQuote">
           <span class="daily-quote-icon">🕌</span>
           <span class="daily-quote-text" id="dailyQuoteText">جاري التحميل...</span>
+        </div>
+      </div>
+
+      <!-- قسم الإنجازات -->
+      <div class="achievements-section" id="achievementsSection">
+        <div class="achievements-header">
+          <span class="achievements-icon">🏆</span>
+          <div>
+            <h2>إنجازاتك</h2>
+            <p>أوسمة تحصل عليها تلقائياً عند تحقيق الأهداف</p>
+          </div>
+        </div>
+        <div class="achievements-grid" id="achievementsGrid">
+          <!-- يتم ملؤها بالـ JS -->
         </div>
       </div>
 
@@ -61,6 +108,11 @@
           </div>
         </div>
         <div class="thamari-grid" id="thamariGrid">
+          <div class="thamari-card thamari-card-points">
+            <div class="thamari-card-icon">⭐</div>
+            <div class="thamari-card-value" id="thamariPoints">0</div>
+            <div class="thamari-card-label">النقاط الإجمالية</div>
+          </div>
           <div class="thamari-card thamari-card-pages">
             <div class="thamari-card-icon">📄</div>
             <div class="thamari-card-value" id="thamariPages">0</div>
@@ -75,11 +127,6 @@
             <div class="thamari-card-icon">📖</div>
             <div class="thamari-card-value" id="thamariTotal">0</div>
             <div class="thamari-card-label">ورد كلي</div>
-          </div>
-          <div class="thamari-card thamari-card-points">
-            <div class="thamari-card-icon">⭐</div>
-            <div class="thamari-card-value" id="thamariPoints">0</div>
-            <div class="thamari-card-label">نقطة مكتسبة</div>
           </div>
           <div class="thamari-card thamari-card-books">
             <div class="thamari-card-icon">📚</div>
@@ -155,6 +202,11 @@
     </div>
 
   </main>
+
+  <!-- Footer -->
+  <footer class="student-footer">
+    <p>📚 اجعل القراءة عادة يومية — بارك الله في علمك وعملك</p>
+  </footer>
 
   <script src="js/auth.js"></script>
   <script src="js/student.js"></script>
