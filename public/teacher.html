@@ -85,92 +85,104 @@
           </form>
         </div>
 
-        <!-- إنشاء حساب معلم جديد -->
-        <div class="card">
-          <h3 class="card-title">إنشاء حساب معلم جديد 🎓</h3>
-          <form id="teacherForm" onsubmit="handleCreateTeacher(event)">
-            <div class="form-group">
-              <label for="newTeacherFullName">اسم المعلم الكامل</label>
-              <input type="text" id="newTeacherFullName" class="form-control" placeholder="مثال: أ. محمد أحمد" required autocomplete="name">
-            </div>
-            <div class="form-group">
-              <label for="newTeacherUsername">اسم المستخدم</label>
-              <input type="text" id="newTeacherUsername" class="form-control" placeholder="اختر اسم مستخدم فريد" required autocomplete="username">
-            </div>
-            <div class="form-group">
-              <label for="newTeacherPassword">كلمة المرور</label>
-              <input type="password" id="newTeacherPassword" class="form-control" placeholder="اختر كلمة مرور قوية" required autocomplete="new-password">
-            </div>
-            <button type="submit" class="btn btn-secondary">إنشاء حساب المعلم</button>
-          </form>
-        </div>
+        <!-- زر أدوات إضافية -->
+        <button class="more-tools-toggle" id="moreToolsToggle" onclick="toggleMoreTools()">
+          <span class="more-tools-dots">⋮</span>
+          <span class="more-tools-text">أدوات إضافية</span>
+          <span class="more-tools-arrow" id="moreToolsArrow">▼</span>
+        </button>
 
-        <!-- إضافة / خصم نقاط -->
-        <div class="card">
-          <h3 class="card-title">إدارة نقاط الطالب ⭐</h3>
-          <form id="addPointsForm" onsubmit="return false;">
-            <div class="form-group">
-              <label for="pointsStudentSelect">اختر الطالب</label>
-              <select id="pointsStudentSelect" class="form-control" required>
-                <option value="">-- اختر طالباً --</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="pointsAmount">عدد النقاط</label>
-              <input type="number" id="pointsAmount" class="form-control" min="1" placeholder="مثال: 5" required>
-            </div>
-            <div class="form-group">
-              <label for="pointsReason">السبب (اختياري)</label>
-              <input type="text" id="pointsReason" class="form-control" placeholder="مثال: مشاركة متميزة، تأخر...">
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <button type="button" onclick="handlePointsAction('add')" class="btn btn-primary" style="background: linear-gradient(135deg, #059669, #10B981);">⭐ إضافة</button>
-              <button type="button" onclick="handlePointsAction('deduct')" class="btn btn-primary" style="background: linear-gradient(135deg, #DC2626, #EF4444);">🔻 خصم</button>
-            </div>
-          </form>
-        </div>
+        <!-- الأدوات الإضافية (مخفية افتراضياً) -->
+        <div class="more-tools-section" id="moreToolsSection" style="display: none;">
 
-        <!-- تعديل أسماء الكتب -->
-        <div class="card">
-          <h3 class="card-title">تعديل أسماء الكتب ✏️</h3>
-          <form id="renameBookForm" onsubmit="handleRenameBook(event)">
-            <div class="form-group">
-              <label for="oldBookName">اختر الكتاب</label>
-              <select id="oldBookName" class="form-control" required>
-                <option value="">-- اختر كتاباً --</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="newBookName">الاسم الجديد</label>
-              <input type="text" id="newBookName" class="form-control" placeholder="أدخل الاسم الجديد للكتاب" required>
-            </div>
-            <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent), #F59E0B);">✏️ تعديل الاسم</button>
-          </form>
-        </div>
-
-        <!-- تعيين صورة غلاف الكتاب -->
-        <div class="card">
-          <h3 class="card-title">صورة غلاف الكتاب 🖼️</h3>
-          <div>
-            <div class="form-group">
-              <label for="imageBookName">اختر الكتاب</label>
-              <select id="imageBookName" class="form-control">
-                <option value="">-- اختر كتاباً --</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>اختر صورة الغلاف</label>
-              <label for="bookImageFile" class="file-upload-area" id="fileUploadArea">
-                <span class="file-upload-icon">📷</span>
-                <span class="file-upload-text" id="fileUploadText">اضغط لاختيار صورة من الألبوم</span>
-                <input type="file" id="bookImageFile" accept="image/*" style="display: none;" onchange="previewBookImage(this)">
-              </label>
-            </div>
-            <div id="bookImagePreview" style="display:none; margin-bottom: 14px; text-align: center;">
-              <img id="bookImagePreviewImg" src="" alt="معاينة" style="max-width: 100%; max-height: 180px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
-            </div>
-            <button type="button" onclick="handleSetBookImage()" class="btn btn-primary" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);">🖼️ تعيين الصورة</button>
+          <!-- إنشاء حساب معلم جديد -->
+          <div class="card">
+            <h3 class="card-title">إنشاء حساب معلم جديد 🎓</h3>
+            <form id="teacherForm" onsubmit="handleCreateTeacher(event)">
+              <div class="form-group">
+                <label for="newTeacherFullName">اسم المعلم الكامل</label>
+                <input type="text" id="newTeacherFullName" class="form-control" placeholder="مثال: أ. محمد أحمد" required autocomplete="name">
+              </div>
+              <div class="form-group">
+                <label for="newTeacherUsername">اسم المستخدم</label>
+                <input type="text" id="newTeacherUsername" class="form-control" placeholder="اختر اسم مستخدم فريد" required autocomplete="username">
+              </div>
+              <div class="form-group">
+                <label for="newTeacherPassword">كلمة المرور</label>
+                <input type="password" id="newTeacherPassword" class="form-control" placeholder="اختر كلمة مرور قوية" required autocomplete="new-password">
+              </div>
+              <button type="submit" class="btn btn-secondary">إنشاء حساب المعلم</button>
+            </form>
           </div>
+
+          <!-- إضافة / خصم نقاط -->
+          <div class="card">
+            <h3 class="card-title">إدارة نقاط الطالب ⭐</h3>
+            <form id="addPointsForm" onsubmit="return false;">
+              <div class="form-group">
+                <label for="pointsStudentSelect">اختر الطالب</label>
+                <select id="pointsStudentSelect" class="form-control" required>
+                  <option value="">-- اختر طالباً --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="pointsAmount">عدد النقاط</label>
+                <input type="number" id="pointsAmount" class="form-control" min="1" placeholder="مثال: 5" required>
+              </div>
+              <div class="form-group">
+                <label for="pointsReason">السبب (اختياري)</label>
+                <input type="text" id="pointsReason" class="form-control" placeholder="مثال: مشاركة متميزة، تأخر...">
+              </div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <button type="button" onclick="handlePointsAction('add')" class="btn btn-primary" style="background: linear-gradient(135deg, #059669, #10B981);">⭐ إضافة</button>
+                <button type="button" onclick="handlePointsAction('deduct')" class="btn btn-primary" style="background: linear-gradient(135deg, #DC2626, #EF4444);">🔻 خصم</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- تعديل أسماء الكتب -->
+          <div class="card">
+            <h3 class="card-title">تعديل أسماء الكتب ✏️</h3>
+            <form id="renameBookForm" onsubmit="handleRenameBook(event)">
+              <div class="form-group">
+                <label for="oldBookName">اختر الكتاب</label>
+                <select id="oldBookName" class="form-control" required>
+                  <option value="">-- اختر كتاباً --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="newBookName">الاسم الجديد</label>
+                <input type="text" id="newBookName" class="form-control" placeholder="أدخل الاسم الجديد للكتاب" required>
+              </div>
+              <button type="submit" class="btn btn-primary" style="background: linear-gradient(135deg, var(--accent), #F59E0B);">✏️ تعديل الاسم</button>
+            </form>
+          </div>
+
+          <!-- تعيين صورة غلاف الكتاب -->
+          <div class="card">
+            <h3 class="card-title">صورة غلاف الكتاب 🖼️</h3>
+            <div>
+              <div class="form-group">
+                <label for="imageBookName">اختر الكتاب</label>
+                <select id="imageBookName" class="form-control">
+                  <option value="">-- اختر كتاباً --</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>اختر صورة الغلاف</label>
+                <label for="bookImageFile" class="file-upload-area" id="fileUploadArea">
+                  <span class="file-upload-icon">📷</span>
+                  <span class="file-upload-text" id="fileUploadText">اضغط لاختيار صورة من الألبوم</span>
+                  <input type="file" id="bookImageFile" accept="image/*" style="display: none;" onchange="previewBookImage(this)">
+                </label>
+              </div>
+              <div id="bookImagePreview" style="display:none; margin-bottom: 14px; text-align: center;">
+                <img id="bookImagePreviewImg" src="" alt="معاينة" style="max-width: 100%; max-height: 180px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+              </div>
+              <button type="button" onclick="handleSetBookImage()" class="btn btn-primary" style="background: linear-gradient(135deg, #8B5CF6, #A78BFA);">🖼️ تعيين الصورة</button>
+            </div>
+          </div>
+
         </div>
       </aside>
 

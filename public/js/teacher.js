@@ -1,5 +1,21 @@
 // Teacher Dashboard Logic
 
+// Toggle more tools section
+function toggleMoreTools() {
+  const section = document.getElementById('moreToolsSection');
+  const btn = document.getElementById('moreToolsToggle');
+  const isVisible = section.style.display !== 'none';
+
+  if (isVisible) {
+    section.style.display = 'none';
+    btn.classList.remove('active');
+  } else {
+    section.style.display = 'block';
+    btn.classList.add('active');
+  }
+}
+
+
 // Protect Route
 window.addEventListener('DOMContentLoaded', () => {
   const user = getUser();

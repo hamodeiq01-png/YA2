@@ -2789,3 +2789,73 @@ tr:hover {
 .points-animate {
   animation: pointsBounce 0.5s ease;
 }
+
+/* ====== MORE TOOLS TOGGLE (Teacher Sidebar) ====== */
+.more-tools-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, rgba(28, 61, 47, 0.04), rgba(28, 61, 47, 0.08));
+  border: 2px dashed rgba(28, 61, 47, 0.15);
+  border-radius: 12px;
+  font-family: var(--font-family);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  margin-bottom: 16px;
+}
+
+.more-tools-toggle:hover {
+  background: linear-gradient(135deg, rgba(28, 61, 47, 0.08), rgba(28, 61, 47, 0.14));
+  border-color: rgba(28, 61, 47, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(28, 61, 47, 0.1);
+}
+
+.more-tools-toggle.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-light));
+  color: #fff;
+  border-style: solid;
+  border-color: var(--primary);
+  box-shadow: 0 4px 15px rgba(28, 61, 47, 0.25);
+}
+
+.more-tools-dots {
+  font-size: 1.4rem;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.more-tools-text {
+  flex: 1;
+  text-align: right;
+}
+
+.more-tools-arrow {
+  font-size: 0.75rem;
+  transition: transform 0.3s ease;
+}
+
+.more-tools-toggle.active .more-tools-arrow {
+  transform: rotate(180deg);
+}
+
+.more-tools-section {
+  animation: moreToolsSlideIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes moreToolsSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
