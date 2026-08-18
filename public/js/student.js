@@ -164,60 +164,6 @@ function updateStreakDisplay(streak) {
   }
 }
 
-// --- تقويم القراءة ---
-function buildReadingCalendar(history) {
-  const grid = document.getElementById('calendarGrid');
-  if (!grid) return;
-
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-  const todayStr = now.toLocaleDateString('sv');
-
-  // بناء خريطة النشاط
-  const activityMap = {};
-  history.forEach(h => {
-    if (h.isCompleted && h.submittedAt) {
-      const d = new Date(h.submittedAt).toLocaleDateString('sv');
-      if (!activityMap[d]) activityMap[d] = { onTime: false, late: false };
-      if (h.isLate) activityMap[d].late = true;
-      else activityMap[d].onTime = true;
-    }
-  });
-
-  // أسماء أيام الأسبوع
-  const dayNames = ['أحد', 'إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت'];
-  let html = dayNames.map(d => `<div class="calendar-day-label">${d}</div>`).join('');
-
-  // أول يوم في الشهر
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  // خلايا فارغة قبل أول يوم
-  for (let i = 0; i < firstDay; i++) {
-    html += '<div class="calendar-day empty"></div>';
-  }
-
-  // أيام الشهر
-  for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    let cls = 'no-read';
-    
-    if (activityMap[dateStr]) {
-      cls = activityMap[dateStr].onTime ? 'on-time' : 'late';
-    }
-
-    // مستقبل
-    if (dateStr > todayStr) cls = 'empty';
-
-    const isToday = dateStr === todayStr ? ' today' : '';
-
-    html += `<div class="calendar-day ${cls}${isToday}" title="${dateStr}">${day}</div>`;
-  }
-
-  grid.innerHTML = html;
-}
-
 // --- تأثير الكونفيتي ---
 function launchConfetti() {
   const container = document.getElementById('confettiContainer');
@@ -411,7 +357,6 @@ function updateThamari() {
   const streak = calculateStreak(history);
   updateStreakDisplay(streak);
   updateAchievements(history, streak);
-  buildReadingCalendar(history);
 }
 
 // --- تحميل بطاقات الكتب (الشاشة الرئيسية) ---
