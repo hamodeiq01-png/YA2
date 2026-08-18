@@ -783,6 +783,66 @@ async function renameBook(oldName, newName) {
   return { oldName: oldName.trim(), newName: newName.trim(), updatedCount: data.length };
 }
 
+// حفظ اقتراح أو ملاحظة من المستخدم (معلم/طالب) للمبرمج
+async function saveFeedback(feedbackData) {
+  const fs = require('fs');
+  const path = require('path');
+  const feedbacksFilePath = path.join(__dirname, 'feedbacks.json');
+
+  const newFeedback = {
+    id: Date.now().toString(),
+    senderName: feedbackData.senderName || 'غير محدد',
+    senderRole: feedbackData.senderRole || 'مستخدم',
+    type: feedbackData.type || 'اقتراح',
+    subject: feedbackData.subject || '',
+    message: feedbackData.message || '',
+    createdAt: new Date().toISOString()
+  };
+
+  try {
+    let list = [];
+    if (fs.existsSync(feedbacksFilePath)) {
+      const fileData = fs.readFileSync(feedbacksFilePath, 'utf8');
+      list = JSON.parse(fileData || '[]');
+    }
+    list.unshift(newFeedback);
+    fs.writeFileSync(feedbacksFilePath, JSON.stringify(list, null, 2), 'utf8');
+  } catch (err) {
+    console.error('Error saving feedback to local file:', err);
+  }
+
+  // محاولة إضافية للحفظ في Supabase إذا كان هناك جدول feedbacks
+  try {
+    await supabase.from('feedbacks').insert([{
+      sender_name: newFeedback.senderName,
+      sender_role: newFeedback.senderRole,
+      type: newFeedback.type,
+      subject: newFeedback.subject,
+      message: newFeedback.message
+    }]);
+  } catch (e) {
+    // نتجاهل في حال عدم وجود الجدول
+  }
+
+  return newFeedback;
+}
+
+// جلب الملاحظات والاقتراحات
+async function getFeedbacks() {
+  const fs = require('fs');
+  const path = require('path');
+  const feedbacksFilePath = path.join(__dirname, 'feedbacks.json');
+  try {
+    if (fs.existsSync(feedbacksFilePath)) {
+      const fileData = fs.readFileSync(feedbacksFilePath, 'utf8');
+      return JSON.parse(fileData || '[]');
+    }
+  } catch (e) {
+    console.error('Error reading feedbacks:', e);
+  }
+  return [];
+}
+
 module.exports = {
   registerStudent,
   createTeacher,
@@ -808,5 +868,8 @@ module.exports = {
   getAllTeachers,
   getUniqueBookNames,
   setBookImage,
-  renameBook
+  renameBook,
+  saveFeedback,
+  getFeedbacks
 };
+

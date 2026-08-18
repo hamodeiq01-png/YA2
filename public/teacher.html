@@ -48,7 +48,12 @@
         <span class="quick-action-icon">⭐</span>
         <span>إدارة نقاط</span>
       </button>
+      <button class="quick-action-btn" onclick="openDevContactModal();">
+        <span class="quick-action-icon">💡</span>
+        <span>تواصل مع المبرمج</span>
+      </button>
     </div>
+
 
     <!-- شريط التبويبات -->
     <div class="teacher-tabs">
@@ -360,7 +365,19 @@
 
   </main>
 
+  <!-- Footer -->
+  <footer class="student-footer" style="margin-top: 40px; padding: 20px; text-align: center; border-top: 1px solid var(--border);">
+    <p>📚 لوحة إدارة المعلم — منصة اقرأ لتتبع القراءة</p>
+    <p style="margin-top: 10px;">
+      <button type="button" class="btn-dev-contact" onclick="openDevContactModal()">
+        <span>💡</span> <span>تواصل مع المبرمج للاقتراحات والملاحظات</span>
+      </button>
+    </p>
+  </footer>
+
   <script src="js/auth.js"></script>
+  <script src="js/contact-dev.js"></script>
   <script src="js/teacher.js"></script>
 </body>
 </html>
+

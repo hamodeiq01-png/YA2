@@ -444,8 +444,41 @@ app.get('/api/student/points', authenticateToken, requireStudent, async (req, re
   }
 });
 
+// Feedback & Developer Suggestions API
+app.post('/api/feedback', async (req, res) => {
+  const { senderName, senderRole, type, subject, message } = req.body;
+
+  if (!message || message.trim() === '') {
+    return res.status(400).json({ error: 'نص الرسالة أو الاقتراح مطلوب' });
+  }
+
+  try {
+    const saved = await db.saveFeedback({
+      senderName,
+      senderRole,
+      type,
+      subject,
+      message
+    });
+    res.json({ success: true, message: 'تم استلام الاقتراح والملاحظة بنجاح، شكراً لمساهمتك!', data: saved });
+  } catch (err) {
+    res.status(500).json({ error: 'حدث خطأ أثناء حفظ الملاحظة' });
+  }
+});
+
+// جلب قائمة الملاحظات للمطور/المعلم
+app.get('/api/feedback', authenticateToken, requireTeacher, async (req, res) => {
+  try {
+    const list = await db.getFeedbacks();
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: 'حدث خطأ في جلب الملاحظات' });
+  }
+});
+
 // Fallback to serving main html for client routing
 app.get('*', (req, res) => {
+
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
