@@ -14,6 +14,30 @@ ALTER TABLE submissions ADD COLUMN IF NOT EXISTS points_awarded INTEGER DEFAULT 
 
 -- إضافة عمود التأخير للتسليمات
 ALTER TABLE submissions ADD COLUMN IF NOT EXISTS is_late BOOLEAN DEFAULT false;
+-- إضافة جدول الاقتراحات والملاحظات
+CREATE TABLE IF NOT EXISTS feedbacks (
+  id BIGSERIAL PRIMARY KEY,
+  sender_name TEXT,
+  sender_role TEXT,
+  type TEXT,
+  subject TEXT,
+  message TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE feedbacks ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow public read on feedbacks" ON feedbacks;
+CREATE POLICY "Allow public read on feedbacks" ON feedbacks FOR SELECT USING (true);
+
+DROP POLICY IF EXISTS "Allow public insert on feedbacks" ON feedbacks;
+CREATE POLICY "Allow public insert on feedbacks" ON feedbacks FOR INSERT WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow public delete on feedbacks" ON feedbacks;
+CREATE POLICY "Allow public delete on feedbacks" ON feedbacks FOR DELETE USING (true);
+
+GRANT ALL ON TABLE feedbacks TO anon, authenticated, service_role, postgres;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role, postgres;
 `;
 
 async function run() {
