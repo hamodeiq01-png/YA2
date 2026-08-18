@@ -722,6 +722,39 @@ async function loadBookNames() {
 // --- معاينة صورة الكتاب من الملف ---
 let currentBookImageBase64 = null;
 
+// ضغط وتصغير الصورة قبل الإرسال
+function compressImage(file, maxWidth = 800, quality = 0.7) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const img = new Image();
+      img.onload = function() {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // تصغير إذا كانت أكبر من maxWidth
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressedBase64);
+      };
+      img.onerror = () => reject(new Error('فشل في قراءة الصورة'));
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error('فشل في قراءة الملف'));
+    reader.readAsDataURL(file);
+  });
+}
+
 function previewBookImage(input) {
   const file = input.files[0];
   const preview = document.getElementById('bookImagePreview');
@@ -737,23 +770,31 @@ function previewBookImage(input) {
     return;
   }
 
-  // التحقق من الحجم (max 2MB)
-  if (file.size > 2 * 1024 * 1024) {
-    showAlert('teacherAlert', 'حجم الصورة كبير جداً. الحد الأقصى 2 ميجابايت.', 'danger');
+  // التحقق من الحجم (max 5MB للملف الأصلي - سيتم ضغطه)
+  if (file.size > 5 * 1024 * 1024) {
+    showAlert('teacherAlert', 'حجم الصورة كبير جداً. الحد الأقصى 5 ميجابايت.', 'danger');
     input.value = '';
     currentBookImageBase64 = null;
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    currentBookImageBase64 = e.target.result;
-    previewImg.src = currentBookImageBase64;
-    preview.style.display = 'block';
-    uploadText.textContent = '✓ تم اختيار: ' + file.name;
-    uploadArea.classList.add('file-upload-has-file');
-  };
-  reader.readAsDataURL(file);
+  uploadText.textContent = 'جاري معالجة الصورة...';
+
+  // ضغط الصورة قبل الحفظ
+  compressImage(file, 800, 0.7)
+    .then(compressedBase64 => {
+      currentBookImageBase64 = compressedBase64;
+      previewImg.src = compressedBase64;
+      preview.style.display = 'block';
+      uploadText.textContent = '✓ تم اختيار: ' + file.name;
+      uploadArea.classList.add('file-upload-has-file');
+    })
+    .catch(err => {
+      showAlert('teacherAlert', 'حدث خطأ أثناء معالجة الصورة', 'danger');
+      input.value = '';
+      currentBookImageBase64 = null;
+      uploadText.textContent = 'اضغط لاختيار صورة من الألبوم';
+    });
 }
 
 // --- تعيين صورة كتاب ---
@@ -768,6 +809,14 @@ async function handleSetBookImage() {
   if (!currentBookImageBase64) {
     showAlert('teacherAlert', 'يرجى اختيار صورة من الألبوم أولاً', 'danger');
     return;
+  }
+
+  // إظهار حالة التحميل
+  const setBtn = document.querySelector('[onclick="handleSetBookImage()"]');
+  const originalBtnText = setBtn ? setBtn.innerHTML : '';
+  if (setBtn) {
+    setBtn.innerHTML = '⏳ جاري رفع الصورة...';
+    setBtn.disabled = true;
   }
 
   try {
@@ -788,7 +837,12 @@ async function handleSetBookImage() {
     document.getElementById('fileUploadArea').classList.remove('file-upload-has-file');
     currentBookImageBase64 = null;
   } catch (error) {
-    showAlert('teacherAlert', error.message, 'danger');
+    showAlert('teacherAlert', error.message || 'حدث خطأ أثناء رفع الصورة', 'danger');
+  } finally {
+    if (setBtn) {
+      setBtn.innerHTML = originalBtnText;
+      setBtn.disabled = false;
+    }
   }
 }
 

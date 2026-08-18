@@ -9,7 +9,7 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = 'ya2_reading_tracker_super_secret_key_12345';
 
 // Middlewares
-app.use(express.json({ limit: '5mb' }));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 

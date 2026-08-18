@@ -686,22 +686,89 @@ async function getUniqueBookNames() {
   return uniqueNames.sort();
 }
 
-// تعيين صورة لكتاب
-async function setBookImage(bookName, imageUrl) {
-  if (!bookName || !imageUrl) {
-    throw new Error('اسم الكتاب ورابط الصورة مطلوبان');
+// تعيين صورة لكتاب (رفع إلى Supabase Storage)
+async function setBookImage(bookName, imageBase64) {
+  if (!bookName || !imageBase64) {
+    throw new Error('اسم الكتاب والصورة مطلوبان');
   }
 
-  const { data, error } = await supabase
-    .from('assignments')
-    .update({ book_image: imageUrl.trim() })
-    .eq('book_name', bookName.trim())
-    .select();
+  try {
+    let publicUrl;
 
-  if (error) throw new Error('حدث خطأ أثناء تعيين صورة الكتاب');
-  if (!data || data.length === 0) throw new Error('لم يتم العثور على أوراد بهذا الاسم');
+    // إذا كانت الصورة base64 نرفعها إلى Storage
+    if (imageBase64.startsWith('data:')) {
+      // استخراج نوع الملف والبيانات
+      const matches = imageBase64.match(/^data:image\/(\w+);base64,(.+)$/);
+      if (!matches) {
+        throw new Error('صيغة الصورة غير صحيحة');
+      }
 
-  return { bookName: bookName.trim(), updatedCount: data.length };
+      const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // إنشاء اسم فريد للملف (ASCII فقط لأن Supabase Storage لا يقبل العربي)
+      const crypto = require('crypto');
+      const nameHash = crypto.createHash('md5').update(bookName.trim()).digest('hex').substring(0, 12);
+      const fileName = `book_${nameHash}_${Date.now()}.${ext}`;
+
+      // حذف الصور القديمة لنفس الكتاب
+      const prefix = `book_${nameHash}_`;
+      const { data: existingFiles } = await supabase.storage
+        .from('book-covers')
+        .list('', { limit: 100 });
+
+      if (existingFiles && existingFiles.length > 0) {
+        const oldFiles = existingFiles
+          .filter(f => f.name.startsWith(prefix))
+          .map(f => f.name);
+        if (oldFiles.length > 0) {
+          await supabase.storage.from('book-covers').remove(oldFiles);
+        }
+      }
+
+      // رفع الصورة الجديدة
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('book-covers')
+        .upload(fileName, buffer, {
+          contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+          upsert: true
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        throw new Error('حدث خطأ أثناء رفع الصورة: ' + uploadError.message);
+      }
+
+      // الحصول على الرابط العام
+      const { data: urlData } = supabase.storage
+        .from('book-covers')
+        .getPublicUrl(fileName);
+
+      publicUrl = urlData.publicUrl;
+    } else {
+      // إذا كانت URL عادي نستخدمها مباشرة
+      publicUrl = imageBase64.trim();
+    }
+
+    // حفظ الرابط في قاعدة البيانات
+    const { data, error } = await supabase
+      .from('assignments')
+      .update({ book_image: publicUrl })
+      .eq('book_name', bookName.trim())
+      .select();
+
+    if (error) throw new Error('حدث خطأ أثناء تعيين صورة الكتاب');
+    if (!data || data.length === 0) throw new Error('لم يتم العثور على أوراد بهذا الاسم');
+
+    return { bookName: bookName.trim(), updatedCount: data.length, imageUrl: publicUrl };
+  } catch (err) {
+    if (err.message.includes('اسم الكتاب') || err.message.includes('لم يتم') || err.message.includes('صيغة') || err.message.includes('رفع الصورة')) {
+      throw err;
+    }
+    console.error('setBookImage error:', err);
+    throw new Error('حدث خطأ غير متوقع أثناء تعيين صورة الكتاب');
+  }
 }
 
 // تعديل اسم كتاب (تحديث جميع الأوراد بالاسم القديم)
