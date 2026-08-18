@@ -789,42 +789,64 @@ async function saveFeedback(feedbackData) {
   const path = require('path');
   const feedbacksFilePath = path.join(__dirname, 'feedbacks.json');
 
-  const newFeedback = {
-    id: Date.now().toString(),
-    senderName: feedbackData.senderName || 'غير محدد',
-    senderRole: feedbackData.senderRole || 'مستخدم',
-    type: feedbackData.type || 'اقتراح',
-    subject: feedbackData.subject || '',
-    message: feedbackData.message || '',
-    createdAt: new Date().toISOString()
-  };
+  let savedItem = null;
 
+  // 1. الحفظ في Supabase
+  try {
+    const { data, error } = await supabase
+      .from('feedbacks')
+      .insert([{
+        sender_name: feedbackData.senderName || 'غير محدد',
+        sender_role: feedbackData.senderRole || 'مستخدم',
+        type: feedbackData.type || 'اقتراح',
+        subject: feedbackData.subject || '',
+        message: feedbackData.message || ''
+      }])
+      .select()
+      .single();
+
+    if (!error && data) {
+      savedItem = {
+        id: data.id.toString(),
+        senderName: data.sender_name,
+        senderRole: data.sender_role,
+        type: data.type,
+        subject: data.subject,
+        message: data.message,
+        createdAt: data.created_at
+      };
+    }
+  } catch (err) {
+    console.error('Supabase saveFeedback error:', err);
+  }
+
+  // إذا لم يتوفر من Supabase ننشئ كائن محلي
+  if (!savedItem) {
+    savedItem = {
+      id: Date.now().toString(),
+      senderName: feedbackData.senderName || 'غير محدد',
+      senderRole: feedbackData.senderRole || 'مستخدم',
+      type: feedbackData.type || 'اقتراح',
+      subject: feedbackData.subject || '',
+      message: feedbackData.message || '',
+      createdAt: new Date().toISOString()
+    };
+  }
+
+  // 2. الحفظ في ملف feedbacks.json المحلي كنسخة احتياطية
   try {
     let list = [];
     if (fs.existsSync(feedbacksFilePath)) {
       const fileData = fs.readFileSync(feedbacksFilePath, 'utf8');
       list = JSON.parse(fileData || '[]');
     }
-    list.unshift(newFeedback);
+    list.unshift(savedItem);
     fs.writeFileSync(feedbacksFilePath, JSON.stringify(list, null, 2), 'utf8');
   } catch (err) {
-    console.error('Error saving feedback to local file:', err);
+    console.error('Local file save error:', err);
   }
 
-  // محاولة إضافية للحفظ في Supabase إذا كان هناك جدول feedbacks
-  try {
-    await supabase.from('feedbacks').insert([{
-      sender_name: newFeedback.senderName,
-      sender_role: newFeedback.senderRole,
-      type: newFeedback.type,
-      subject: newFeedback.subject,
-      message: newFeedback.message
-    }]);
-  } catch (e) {
-    // نتجاهل في حال عدم وجود الجدول
-  }
-
-  return newFeedback;
+  return savedItem;
 }
 
 // جلب الملاحظات والاقتراحات
@@ -832,40 +854,70 @@ async function getFeedbacks() {
   const fs = require('fs');
   const path = require('path');
   const feedbacksFilePath = path.join(__dirname, 'feedbacks.json');
+
+  // 1. جلب من Supabase
+  try {
+    const { data, error } = await supabase
+      .from('feedbacks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      return data.map(item => ({
+        id: item.id.toString(),
+        senderName: item.sender_name,
+        senderRole: item.sender_role,
+        type: item.type,
+        subject: item.subject,
+        message: item.message,
+        createdAt: item.created_at
+      }));
+    }
+  } catch (err) {
+    console.error('Supabase getFeedbacks error:', err);
+  }
+
+  // 2. الرجوع للملف المحلي في حال تعذر Supabase
   try {
     if (fs.existsSync(feedbacksFilePath)) {
       const fileData = fs.readFileSync(feedbacksFilePath, 'utf8');
       return JSON.parse(fileData || '[]');
     }
   } catch (e) {
-    console.error('Error reading feedbacks:', e);
+    console.error('Error reading feedbacks from file:', e);
   }
+
   return [];
 }
 
 // حذف ملاحظة أو اقتراح
 async function deleteFeedback(id) {
-
   const fs = require('fs');
   const path = require('path');
   const feedbacksFilePath = path.join(__dirname, 'feedbacks.json');
+
+  // 1. حذف من Supabase
+  try {
+    await supabase.from('feedbacks').delete().eq('id', id);
+  } catch (e) {
+    console.error('Supabase deleteFeedback error:', e);
+  }
+
+  // 2. حذف من الملف المحلي
   try {
     if (fs.existsSync(feedbacksFilePath)) {
       const fileData = fs.readFileSync(feedbacksFilePath, 'utf8');
       let list = JSON.parse(fileData || '[]');
-      list = list.filter(item => item.id !== id);
+      list = list.filter(item => item.id.toString() !== id.toString());
       fs.writeFileSync(feedbacksFilePath, JSON.stringify(list, null, 2), 'utf8');
     }
   } catch (e) {
     console.error('Error deleting feedback from file:', e);
   }
 
-  try {
-    await supabase.from('feedbacks').delete().eq('id', id);
-  } catch (e) {}
-
   return { success: true };
 }
+
 
 module.exports = {
   registerStudent,

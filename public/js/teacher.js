@@ -24,9 +24,15 @@ function switchTab(tabName) {
   const tabBtn = document.querySelector(`.teacher-tab[data-tab="${tabName}"]`);
   if (tabBtn) tabBtn.classList.add('active');
 
+  // If feedback tab is opened, reload feedbacks
+  if (tabName === 'feedback') {
+    loadTeacherFeedbacks();
+  }
+
   // Save to localStorage
   localStorage.setItem('teacherActiveTab', tabName);
 }
+
 
 // Protect Route
 window.addEventListener('DOMContentLoaded', () => {
@@ -1082,10 +1088,12 @@ function filterFeedbackList() {
 
   let filtered = cachedFeedbacks.filter(item => {
     // تصفية حسب الدور أو النوع
-    if (currentFeedbackFilter === 'student' && item.senderRole !== 'student' && item.senderRole !== 'الطالب') return false;
-    if (currentFeedbackFilter === 'teacher' && item.senderRole !== 'teacher' && item.senderRole !== 'المعلم') return false;
+    const role = (item.senderRole || '').toLowerCase();
+    if (currentFeedbackFilter === 'student' && !role.includes('طالب') && role !== 'student') return false;
+    if (currentFeedbackFilter === 'teacher' && !role.includes('معلم') && role !== 'teacher') return false;
     if (currentFeedbackFilter === 'idea' && !item.type?.includes('اقتراح') && !item.type?.includes('فكرة')) return false;
     if (currentFeedbackFilter === 'bug' && !item.type?.includes('مشكلة') && !item.type?.includes('خلل')) return false;
+
 
     // بحث نصي
     if (query) {

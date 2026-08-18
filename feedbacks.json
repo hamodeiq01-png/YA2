@@ -1,5 +1,14 @@
 [
   {
+    "id": "1787059702382",
+    "senderName": "أحمد (طالب تجريبي)",
+    "senderRole": "student",
+    "type": "💡 اقتراح ميزة جديدة",
+    "subject": "فحص الربط مع Supabase",
+    "message": "تجربة حية للتأكد من وصول الاقتراح وقراءته من Supabase مباشرة",
+    "createdAt": "2026-08-18T13:28:22.382Z"
+  },
+  {
     "id": "1787058655320",
     "senderName": "طالب تجريبي",
     "senderRole": "student",
